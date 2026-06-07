@@ -9,11 +9,12 @@
 
 | Decision | Choice |
 |----------|--------|
-| Platform | Simultaneous Web + Mobile (identical UI/design) |
-| Mobile Framework | Expo (React Native) — recommended for Next.js web stack |
+| Platform | **Web app first (Next.js 15).** Native mobile (Expo) deferred to **V2** — built after profit + user-acquisition are validated. |
+| Mobile Framework (V2) | Expo (React Native) — planned for V2; rationale preserved in §3 |
+| Frontend / Animation | Tailwind v4 + shadcn/ui + Motion; landing adds GSAP + React Three Fiber + shaders; built via Claude→Kimi K2.6→Claude pipeline against `docs/design.md` |
 | Move Lifecycle Scope | Full lifecycle: planning → moving day → settled |
 | UI Aesthetic | Warm / friendly — earthy tones, rounded corners, consumer-app feel |
-| LLM Strategy | Best model per agent type (Sonnet for reasoning, Haiku for classification) |
+| LLM Strategy | Best model per agent type — **Sonnet 4.6** for reasoning, **Haiku 4.5** for classification, **Opus 4.8** for hardest planning/eval (see §2.3) |
 | Agent Autonomy | Human-in-the-loop on ALL agent actions |
 | Real-World Actions | Yes — email + form submission on user's behalf (Nylas) |
 | Backend | Supabase (Postgres + Auth + Storage) |
@@ -23,10 +24,22 @@
 
 ---
 
+## Scope & Phasing — Web-First (V1) → Mobile (V2)
+
+**V1 ships the web app only.** MoverOS is built and launched as a Next.js 15 web application first. Once profitability and user-acquisition channels are validated, **V2 adds the native mobile app (Expo / React Native)**.
+
+The codebase is still a **Turborepo monorepo with shared `packages/*`** (ui, db, trpc, agents, utils) from day one — not because mobile ships now, but because it keeps business logic, types, design tokens, and agent definitions in reusable packages so the V2 mobile app slots in with minimal rework. Everything in this document tagged **(V2)** is a forward-looking plan, not V1 work:
+
+- `apps/mobile`, Expo SDK / Expo Router, NativeWind, Reanimated/Moti, EAS Build/Update, Expo push — all **(V2)**.
+- The "identical web + mobile UI" goal is reframed: V1 is web-only; in V2, mobile **reuses logic/types/tokens** from `packages/*` and **mirrors motion** (Framer/Motion on web → Reanimated on mobile) from one shared spec — animations are not shared verbatim.
+- App Store / Play Store costs, review cycles, and mobile-specific notifications move to the **V2** cost and timeline notes.
+
+---
+
 ## Table of Contents
 1. [Architecture Overview](#1-architecture-overview)
 2. [Technology Stack — Full Specification](#2-technology-stack--full-specification)
-3. [Mobile Framework Recommendation & Rationale](#3-mobile-framework-recommendation--rationale)
+3. [Mobile App Plan (V2)](#3-mobile-app-plan-v2)
 4. [UI / Design System Specification](#4-ui--design-system-specification)
 5. [Screen-by-Screen UX Specification](#5-screen-by-screen-ux-specification)
 6. [Multi-Agent Orchestration Specification](#6-multi-agent-orchestration-specification)
@@ -77,7 +90,7 @@
    ┌──────▼──────┐   ┌───────▼───────┐   ┌──────▼──────┐
    │  Supabase   │   │    Inngest     │   │  Anthropic  │
    │  Postgres   │   │  Background    │   │  Claude API │
-   │  Auth       │   │  Agent Tasks   │   │  Sonnet 4.5 │
+   │  Auth       │   │  Agent Tasks   │   │  Sonnet 4.6 │
    │  Storage    │   │  Scheduled     │   │  Haiku 4.5  │
    │  Realtime   │   │  Events        │   │             │
    └─────────────┘   └───────────────┘   └─────────────┘
@@ -91,16 +104,19 @@
    └─────────────┘   └───────────────┘
 ```
 
+> **V1 note:** The **Expo (React Native) client above is V2.** In V1 the only client is the Next.js 15 web app. The diagram shows the full target architecture; everything else (tRPC, Supabase, Inngest, Anthropic, Nylas, external APIs) is V1.
+
 ### 1.2 Key Architectural Decisions
 
-**Why a monorepo (Turborepo)?**
-Simultaneous web + mobile with identical UI requires sharing:
-- UI components (design system)
+**Why a monorepo (Turborepo) — even though V1 is web-only?**
+V1 ships only the web app, but the monorepo earns its place immediately by isolating reusable code into `packages/*`:
+- UI components + **design tokens** (design system, sourced from `docs/design.md`)
 - Business logic (move state, agent schemas)
 - Type definitions (Drizzle schema types)
 - Utility functions (date formatting, address parsing)
+- Agent definitions + prompts + the shared agent harness
 
-Without a monorepo, you maintain two separate codebases that will inevitably drift. Turborepo handles build caching and makes this nearly as simple as a single repo.
+This keeps the web app clean and means the **V2 mobile app slots in against the same packages** with minimal rework, instead of forking a second codebase that drifts. Turborepo handles build caching and remote caching (Vercel) for fast CI.
 
 **Why tRPC over REST?**
 - Full TypeScript type safety from database → server → client → mobile
@@ -131,8 +147,8 @@ MONOREPO
 └── Turborepo (build orchestration, shared caching)
 
 APPS
-├── apps/web           → Next.js 15 (App Router)
-└── apps/mobile        → Expo SDK 52 (React Native)
+├── apps/web           → Next.js 15 (App Router)          ← V1
+└── apps/mobile        → Expo SDK 52 (React Native)        ← V2 (deferred)
 
 PACKAGES (shared)
 ├── packages/ui        → Design system (shared components)
@@ -141,22 +157,29 @@ PACKAGES (shared)
 ├── packages/agents    → Agent type definitions + prompts
 └── packages/utils     → Shared utilities (dates, addresses, etc.)
 
-FRONTEND — WEB
+FRONTEND — WEB (V1)
 ├── Framework:         Next.js 15.x (App Router, React Server Components)
 ├── Styling:           Tailwind CSS 4 + CSS variables for theming
 ├── Components:        shadcn/ui (radix primitives, customized to design system)
-├── Animations:        Framer Motion (page transitions, task completions)
+├── Animations (app):  Motion (Framer Motion) — micro-interactions, task completions,
+│                      progress ring; motion-primitives for tasteful primitives
+├── Animations (land): GSAP + ScrollTrigger (cinematic scroll), React Three Fiber +
+│                      drei + GLSL/WGSL shaders (3D hero), Lottie (vector micro-anim)
+├── Effect libraries:  Aceternity UI + Magic UI + React Bits (copy-paste animated
+│                      sections/text/backgrounds — adapted by Kimi, reviewed by Claude)
 ├── Forms:             React Hook Form + Zod validation
-├── State:             Zustand (client UI state) + tRPC (server state)
-├── Charts:            Recharts (timeline progress, task completion charts)
+├── State:             Zustand (client UI state) + tRPC/TanStack Query (server state)
+├── Charts:            Tremor or Recharts (timeline progress, task completion)
 ├── Email Preview:     React Email (render agent-drafted emails in-app)
-└── Icons:             Lucide React
+├── Icons:             Lucide React
+└── Perf guardrails:   lazy-load/code-split GSAP+R3F (landing only, kept OUT of core app);
+                       honor prefers-reduced-motion; keep LCP/CLS green (see docs/design.md)
 
-FRONTEND — MOBILE
+FRONTEND — MOBILE (V2 — deferred)
 ├── Framework:         Expo SDK 52 + Expo Router 4 (file-based navigation)
 ├── Styling:           NativeWind 4 (Tailwind CSS classes for React Native)
 ├── Components:        Custom from packages/ui (React Native compatible)
-├── Animations:        React Native Reanimated 3 + Moti
+├── Animations:        React Native Reanimated 3 + Moti (mirrors web motion spec)
 ├── Forms:             React Hook Form + Zod (same as web)
 ├── Gestures:          React Native Gesture Handler
 ├── Push:              Expo Notifications
@@ -174,10 +197,15 @@ BACKEND
 └── Validation:        Zod (shared with frontend)
 
 AI / AGENTS
-├── Reasoning agents:  Claude Sonnet 4.5 (MoveSetupAgent, BriefAgent, NegotiateAgent)
-├── Classification:    Claude Haiku 4.5 (task classification, sentiment, quick lookups)
-├── Orchestration:     Inngest step functions (multi-step agent flows)
-└── Streaming:         Vercel AI SDK (streaming responses for long-running agent output)
+├── Reasoning agents:  Claude Sonnet 4.6 (MoveSetupAgent, QuoteAgent, ReplyParseAgent, NegotiateAgent)
+├── Hardest planning:  Claude Opus 4.8 (complex move planning, agent-as-judge / evals) — selective
+├── Classification:    Claude Haiku 4.5 (task classification, sentiment, ISP scoring, quick lookups)
+├── Thinking/effort:   Adaptive thinking + `effort` on reasoning agents (no fixed budget_tokens)
+├── Structured I/O:    output_config.format / messages.parse() + Zod (replaces hand-parsed JSON)
+├── Caching:           Prompt caching of shared agent system prompts (cost lever)
+├── Harness:           Shared packages/agents/harness (see §6.5) — hybrid Inngest + Managed Agents
+├── Orchestration:     Inngest step functions (durability, scheduling, task-graph, idempotency)
+└── Streaming:         Vercel AI SDK / Anthropic SDK streaming (long-running agent output)
 
 EXTERNAL SERVICES
 ├── Email execution:   Nylas (connect user's Gmail/Outlook; send on their behalf)
@@ -193,45 +221,71 @@ EXTERNAL SERVICES
 └── Payments:          Stripe (one-time unlock + B2B gifting codes)
 
 INFRASTRUCTURE
-├── Web hosting:       Vercel (Next.js native, edge functions, global CDN)
-├── Mobile builds:     EAS Build (Expo Application Services)
-├── Mobile OTA:        EAS Update (push JS updates without App Store review)
+├── Web hosting:       Vercel (Next.js native, edge functions, global CDN) — also handles web CD via Git
+├── Mobile builds:     EAS Build (Expo Application Services)               ← V2
+├── Mobile OTA:        EAS Update (push JS updates without App Store review) ← V2
 ├── Database:          Supabase Cloud (managed Postgres on AWS)
-├── Monitoring:        Sentry (web + mobile, unified error tracking)
-├── Analytics:         PostHog (product analytics, feature flags, session replay)
+├── Monitoring:        Sentry (web; + mobile in V2)
+├── Analytics:         PostHog (product analytics, feature flags incl. agent kill-switches, session replay)
 ├── Uptime:            BetterStack (status page + alerting)
-└── CI/CD:             GitHub Actions
+└── CI/CD:             GitHub Actions (typecheck/lint/test + EAS triggers in V2). Web CD = Vercel Git
+                       integration (no separate deploy workflow needed). Turborepo remote caching on.
 ```
 
 ### 2.2 Package Version Lock (June 2026)
 
-```json
+```jsonc
 {
+  // --- V1 web ---
   "next": "15.2.x",
-  "expo": "~52.0.x",
-  "expo-router": "~4.0.x",
   "react": "19.0.x",
-  "react-native": "0.76.x",
   "typescript": "5.7.x",
   "tailwindcss": "4.0.x",
-  "nativewind": "4.1.x",
   "drizzle-orm": "0.38.x",
   "drizzle-kit": "0.30.x",
   "@trpc/server": "11.0.x",
   "@trpc/client": "11.0.x",
+  "@tanstack/react-query": "5.x",
   "inngest": "3.x",
-  "@anthropic-ai/sdk": "0.32.x",
+  "@anthropic-ai/sdk": "latest",      // bump from 0.32 — needs structured outputs, effort, caching
   "ai": "4.x",
-  "framer-motion": "11.x",
-  "react-native-reanimated": "3.16.x",
+  "motion": "11.x",                    // Framer Motion (app micro-interactions)
+  "gsap": "3.x",                       // landing scroll choreography
+  "@react-three/fiber": "8.x",         // landing 3D/shader hero
+  "@react-three/drei": "9.x",
+  "lottie-react": "2.x",
   "zod": "3.23.x",
-  "stripe": "16.x"
+  "stripe": "16.x",
+  // --- V2 mobile (deferred) ---
+  "expo": "~52.0.x",
+  "expo-router": "~4.0.x",
+  "react-native": "0.76.x",
+  "nativewind": "4.1.x",
+  "react-native-reanimated": "3.16.x"
 }
 ```
 
+> Pin exact versions at install time. Effect libraries (Aceternity UI, Magic UI, React Bits) are **copy-paste** sources, not pinned deps — components are vendored into `packages/ui` and reviewed for `design.md` conformance.
+
+### 2.3 Model Strategy (current models)
+
+| Use | Model | Why |
+|-----|-------|-----|
+| Reasoning agents (MoveSetupAgent, QuoteAgent, ReplyParseAgent, NegotiateAgent) | **Claude Sonnet 4.6** | Adaptive thinking + `effort`, structured outputs, 1M context, strong tool use at good cost |
+| Hardest planning / agent-as-judge / evals | **Claude Opus 4.8** | Highest reasoning ceiling; used selectively where correctness dominates cost |
+| Classification / one-shots (task classify, sentiment, ISP scoring) | **Claude Haiku 4.5** | Fast, cheap, ideal for short structured calls |
+
+**Conventions (apply to every agent):**
+- **Structured outputs** via `output_config.format` / `messages.parse()` + Zod — never `JSON.parse(response.content[0].text)` (brittle; breaks on prose/thinking blocks).
+- **Adaptive thinking** (`thinking: {type:"adaptive"}`) + `effort` (low/medium/high) instead of fixed token budgets.
+- **Prompt caching** of the shared agent system prompt prefix (large cost reduction across runs).
+- All model calls flow through the shared harness (§6.5), which logs model/tokens/cost to `agent_tasks`.
+
 ---
 
-## 3. Mobile Framework Recommendation & Rationale
+## 3. Mobile App Plan (V2)
+
+> **This entire section is V2 (deferred).** V1 ships web only. The Expo rationale below is the forward plan for when mobile is greenlit after validation. Keeping these decisions documented now ensures the V1 monorepo (`packages/*`) is structured so the mobile app slots in cleanly later.
 
 ### 3.1 Why Expo (Not Flutter, Not bare React Native)
 
@@ -251,7 +305,9 @@ Flutter uses Dart — a completely separate language. Zero code sharing with you
 Expo Router 4 uses file-based routing identical in philosophy to Next.js App Router. Moving between the two apps in development feels natural. Same `layout.tsx` / `page.tsx` mental model.
 
 **3. NativeWind = Tailwind on mobile**
-NativeWind 4 lets you write Tailwind class names on React Native components. Your `packages/ui` design system can export components that use Tailwind on web and NativeWind on mobile — **identical class names, both render correctly.** This is the key to the "identical UI" requirement.
+NativeWind 4 lets you write Tailwind class names on React Native components. Your `packages/ui` design system can export components that use Tailwind on web and NativeWind on mobile — **identical class names for layout/spacing/color.**
+
+> **Reality check on "identical UI":** layout, spacing, and color tokens *do* port via NativeWind. **Animations do not.** V1's web motion stack (Motion/Framer, GSAP, React Three Fiber, Lottie) is DOM/WebGL-based and cannot be shared into React Native, which uses Reanimated/Moti. The correct model is: define motion once at the **token/spec level** (§4.6), then **implement it twice** — Framer/Motion on web (V1), Reanimated/Moti on mobile (V2). Treat "identical UI" as *shared design language + mirrored motion*, not pixel-and-animation-identical code.
 
 **4. EAS Build + EAS Update**
 - EAS Build: Cloud-based iOS and Android builds without a Mac required
@@ -298,6 +354,41 @@ packages/ui/
 ---
 
 ## 4. UI / Design System Specification
+
+### 4.0 Design System Source of Truth — `docs/design.md`
+
+The single source of truth for all visual + motion design is **`docs/design.md`** — a machine-readable design document (the Google Stitch / "DESIGN.md" format) that both AI design passes and human/AI build passes consume. It is the **first artifact built in Phase 1**, before the component kit, and is maintained by Claude throughout. The color/typography/spacing/motion tokens in this section (§4.2–§4.6) are the seed; `design.md` is the living, authoritative version that `packages/ui/theme` is generated from and kept in sync with.
+
+**The 9-section schema** (every `design.md` contains these):
+1. **Visual Theme & Atmosphere** — mood + philosophy ("Warm Command Center")
+2. **Color Palette & Roles** — semantic names + hex + functional purpose
+3. **Typography Rules** — families + full hierarchy
+4. **Component Stylings** — buttons/cards/inputs/nav with every state
+5. **Layout Principles** — spacing scale, grid, whitespace strategy
+6. **Depth & Elevation** — shadow/surface hierarchy
+7. **Design Guardrails** — do/don't boundaries (incl. anti-slop + perf rules)
+8. **Responsive Behavior** — breakpoints, touch targets, adaptation
+9. **Agent Prompt Guide** — quick-reference for AI build prompts
+
+**Synthesis playbook — what `design.md` is built from.** During Phase 1, synthesize and extract key knowledge from these reference repos, each mapped to a role:
+
+| Source | Role in `design.md` |
+|--------|---------------------|
+| **VoltAgent/awesome-design-md** | The 9-section DESIGN.md format/template itself |
+| **nexu-io/open-design** | 150+ brand-grade DESIGN.md exemplars (Linear, Stripe, Notion — our stated inspirations) + skill-protocol model. *Primary reference* |
+| **jiji262/claude-design-skill** | Anti-slop rules, brand-context protocol, 10 design philosophies × 5 schools, propose-3-directions, React/Babel gotchas → §7 Guardrails + Claude's design role |
+| **LottieFiles/motion-design-skill** | Disney 12 principles, motion-personality archetypes, choreography/stagger, state-feedback recipes → §4.6 Motion + a "Warm Command Center" motion personality |
+| **magicuidesign/magicui**, **DavidHDev/react-bits**, **ibelick/motion-primitives** | Copy-paste web component/effect catalog → map each effect to a MoverOS moment (task-complete celebration, progress ring, agent-working pulse) |
+| **Aceternity UI** | High-end animated landing sections (added to the effect-library set) |
+| **pushkarverma3698/Website-Builder-Tool (Cinematic Web)** | Aesthetic presets, GSAP patterns, "think pipeline," propose-directions → marketing/landing approach |
+| *Excluded from v1 core (future/experimental appendix only):* **Bravin2000/3D-modeling-2027** (3ds Max C++ suite — N/A to a web app), **Cyclostone/Talking-AI-Avatar-Generation** (only if a future "AI move concierge" video avatar) | — |
+
+**The Claude → Kimi K2.6 → Claude design pipeline:**
+1. **Claude (design skill):** owns `design.md`, produces per-screen/per-section **design plans + build prompts**, applies anti-slop rules and the propose-3-directions pattern, and decides which effect-library pieces fit.
+2. **Kimi K2.6:** executes the builds from those prompts (strong at frontend animation + GSAP/R3F/GLSL shaders), web-first.
+3. **Claude:** reviews output (anti-slop + `design.md` conformance + perf/a11y), integrates into the monorepo, wires in Aceternity/Magic UI/React Bits/motion-primitives, keeps `design.md` and `packages/ui/theme` authoritative.
+
+**Surface split (see §2.1 web stack):** the **landing page** is the high-impact, uniquely animated surface (GSAP + R3F + shaders + Lottie); the **web app** (dashboard, approval inbox, onboarding, etc.) is clean/modern/interactive with tasteful Motion micro-interactions and Lottie state feedback — GSAP/R3F deliberately kept out of the core app for performance.
 
 ### 4.1 Design Philosophy
 
@@ -536,7 +627,9 @@ export const motionTokens = {
 /settings/billing           ← Stripe customer portal
 ```
 
-### 5.2 Mobile Tab Structure (Expo Router)
+### 5.2 Mobile Tab Structure (Expo Router) — V2
+
+> **(V2 — deferred.)** Web navigation (§5.1) is the V1 surface. The screen-by-screen UX specs below (onboarding, dashboard, approval inbox, moving-day mode) are designed web-first for V1 and mirrored on mobile in V2.
 
 ```
 (tabs)/
@@ -555,7 +648,7 @@ export const motionTokens = {
 
 ### 5.3 Screen Specifications
 
-#### Onboarding Wizard (5 screens, web + mobile identical)
+#### Onboarding Wizard (5 screens — web V1; mirrored on mobile in V2)
 
 **Screen 1 — Origin Address**
 - Large text input with address autocomplete (Google Places)
@@ -717,13 +810,13 @@ Activated on the day of the move. Full-screen experience.
 
 | Agent | Model | Trigger | Avg Runtime | Cost/Run |
 |-------|-------|---------|-------------|---------|
-| MoveSetupAgent | Sonnet 4.5 | Move created | 15–30s | ~$0.08 |
+| MoveSetupAgent | Sonnet 4.6 | Move created | 15–30s | ~$0.08 |
 | QuoteAgent | Haiku 4.5 + Sonnet | 6wks out / manual | 60–120s | ~$0.04 |
 | InternetAgent | Haiku 4.5 | 3wks out / manual | 20–40s | ~$0.02 |
 | UtilityAgent | Haiku 4.5 | 3wks out / manual | 30–60s | ~$0.03 |
 | AddressAgent | Haiku 4.5 | 2wks out / manual | 20–40s | ~$0.02 |
 | ServiceAgent | Haiku 4.5 | User-triggered | 20–40s | ~$0.02 |
-| TimelineAgent | Sonnet 4.5 | Daily cron / events | 5–10s | ~$0.01 |
+| TimelineAgent | Sonnet 4.6 | Daily cron / events | 5–10s | ~$0.01 |
 | MovingDayAgent | Haiku 4.5 | Move date trigger | Ongoing | ~$0.03 |
 | SettledAgent | Haiku 4.5 | 3 days post-move | 10–20s | ~$0.01 |
 | **Total per move lifecycle** | | | | **~$0.26** |
@@ -746,7 +839,7 @@ export const moveSetupAgent = inngest.createFunction(
     // Step 1: Determine move type and complexity
     const moveProfile = await step.run('analyze-move-profile', async () => {
       const response = await anthropic.messages.create({
-        model: 'claude-sonnet-4-5',
+        model: 'claude-sonnet-4-6',
         max_tokens: 2000,
         system: MOVE_SETUP_SYSTEM_PROMPT,
         messages: [{
@@ -1000,6 +1093,57 @@ const channel = supabase
   })
   .subscribe();
 ```
+
+### 6.5 Agent Harness Architecture
+
+A **harness** is the runtime scaffold around each agent: prompt + version management, the tool/agent loop, typed I/O validation, retries, HITL gating, tracing, cost accounting, eval hooks, and a kill-switch. The §6.2 functions hand-roll Anthropic calls + `parseJSON` inline; this section replaces that with a shared harness so every agent is defined declaratively and the runner handles the mechanics.
+
+**Shared definition** (`packages/agents/harness`):
+
+```typescript
+type AgentDef<I, O> = {
+  id: AgentType;
+  model: 'claude-sonnet-4-6' | 'claude-haiku-4-5' | 'claude-opus-4-8';
+  effort?: 'low' | 'medium' | 'high';
+  systemPrompt: VersionedPrompt;     // versioned + prompt-cached prefix
+  tools?: ZodTool[];                 // typed tools (SDK tool-runner)
+  inputSchema: ZodSchema<I>;
+  outputSchema: ZodSchema<O>;        // structured outputs — validated before use
+  guardrails: Guardrail[];           // e.g. reject/repair invalid output
+  evalSet: GoldenCase<I, O>[];       // regression evals (Promptfoo / Anthropic evals)
+  costBudgetUsd: number;             // logged to agent_tasks; kill-switch via PostHog flag
+  runtime: 'direct' | 'tool-runner' | 'managed';  // dispatch target (see below)
+};
+```
+
+**Two runtimes, one interface — the hybrid model.** You asked for managed assistance *and* customization control; the harness gives both by dispatching each agent to the right runtime:
+
+| Dimension | **Anthropic Managed Agents** (`runtime: 'managed'`) | **Custom (`'direct'` / `'tool-runner'`) on Inngest + Claude API** |
+|---|---|---|
+| Harness code you own | Minimal — server runs the loop | You own the loop/middleware (SDK tool-runner helps) |
+| HITL | **Native** (`always_ask` → `tool_confirmation`) | DIY via `approval_items` (already designed — §7) |
+| Versioning / rollback | **Native** (immutable agent versions) | DIY prompt registry |
+| Eval | **Native** (Outcomes: rubric-graded iterate loop) | DIY (Promptfoo / evals) |
+| Tool execution | Sandboxed Anthropic container | Your TS runtime (full control) |
+| Domain knowledge | Skills (attach `design.md`/playbooks) + MCP | Inline in prompts/tools |
+| Cheap one-shots (Haiku) | Overkill (container per session) | **Ideal** (one fast call) |
+| Scheduling / time-triggers | Still need Inngest | **Inngest already does this** |
+| Control over loop | Lower | **Full** |
+| Maturity / vendor surface | Newer/beta; RPM limits; tool-exec in Anthropic container | Mature; all in-house |
+
+**Recommended assignment:**
+
+| Agent | Runtime | Rationale |
+|-------|---------|-----------|
+| MoveSetupAgent | `managed` or `tool-runner` (Sonnet 4.6) | Benefits from versioning + Outcomes eval on plan quality |
+| QuoteAgent | `managed` (Sonnet 4.6) | Multi-step + native HITL on email sends; Skills for RFQ playbook |
+| ReplyParseAgent *(new — §10.x)* | `tool-runner` (Sonnet 4.6) | Parse inbound mover replies → structured `mover_quotes` |
+| InternetAgent / UtilityAgent / AddressAgent / ServiceAgent (scoring) | `direct` (Haiku 4.5) | Cheap one-shot classification + structured outputs |
+| TimelineAgent (orchestrator) | `direct` (Sonnet 4.6) | Owns the task graph + cross-agent cascades (§6 orchestration) |
+
+**Backbone stays Inngest.** Regardless of per-agent runtime, **Inngest owns triggers, durability, scheduling, the cross-agent task graph, and idempotency** (idempotency key = `move + agentType + window`, with a unique constraint so retries never double-insert tasks/approvals). Managed Agents (where used) handle only the reasoning + tool loop; Inngest schedules and reacts to them.
+
+**Cross-cutting harness features:** output **validation gates** (Zod) before any `approval_item` is created — invalid output is repaired/retried, never surfaced as junk; **traces + cost** logged to `agent_tasks` (already in schema; add optional Langfuse/Helicone); **kill-switch** per agent via PostHog flags (disable a misbehaving agent without a deploy); **eval suite** of golden cases run in CI.
 
 ---
 
@@ -1745,6 +1889,18 @@ CREATE POLICY "Users access own tasks" ON tasks
 
 ## 10. API Integration Specifications
 
+### 10.0 Integration Reality & Risk (read before building agents)
+
+These are load-bearing assumptions in the agent designs that need mitigation, not optimism:
+
+- **FMCSA ≠ quotes.** The FMCSA API returns *licensed carrier + safety* data (DOT/MC numbers, ratings) — **not prices**. QuoteAgent drafts RFQ emails and depends on movers *replying* in-window; many won't, or will phone. **Mitigation:** show an **instant ballpark estimate** computed from the move profile (distance × home-size × season) immediately, and treat real quotes as they arrive (via ReplyParseAgent). Set expectations in the UX.
+- **ISP pricing is the weak link.** §10.3 pivots from SmartyStreets to the **FCC Broadband Map**, which gives coarse/often-stale *availability*, not reliable plan pricing. **Showing wrong prices is a trust/liability risk.** **Mitigation:** prefer affiliate provider feeds where available; clearly **label everything an estimate**; never present FCC-derived pricing as a firm quote.
+- **Nylas "send on the user's behalf"** raises deliverability + CAN-SPAM + Gmail automated-send ToS concerns. The `QUOTE_RFQ_SYSTEM_PROMPT` line *"NOT mention you are an AI assistant"* is an ethics/compliance flag — **reconsider it.** Per-send HITL approval (§7) is the right control; keep it.
+- **Twilio A2P 10DLC registration** is required for application-to-person SMS and has **weeks of lead time** — start it early (added to §16 risk buffer).
+- **Affiliate approvals** (CJ/Impact, ISP programs) have lead time and rules on comparison/lead-gen framing — the $135 ARPM model is optimistic; validate program terms before relying on it.
+- **New agent required — ReplyParseAgent.** Inbound mover-reply handling (Nylas `message.created` webhook → match thread to mover → extract price/terms → update `mover_quotes`) is the hard half of the quote loop and was unspecified. Add it (Sonnet 4.6, `tool-runner` runtime; structured output into `mover_quotes`).
+- **Agent-failure UX.** HITL covers *approval*, not *failure*. Every agent surface needs explicit **loading / empty / "agent couldn't complete"** states so a failed or low-quality run degrades gracefully instead of showing nothing.
+
 ### 10.1 Integration Matrix
 
 | Service | Purpose | Auth | Rate Limits | Cost |
@@ -1924,7 +2080,7 @@ moveros/
 │   │   ├── next.config.ts
 │   │   └── tailwind.config.ts
 │   │
-│   └── mobile/               # Expo app
+│   └── mobile/               # Expo app  ← V2 (placeholder in V1; not built yet)
 │       ├── app/
 │       │   ├── (tabs)/
 │       │   │   ├── index.tsx           # Dashboard
@@ -2011,9 +2167,14 @@ moveros/
     │   │   │   │   ├── addressAgent.ts
     │   │   │   │   ├── serviceAgent.ts
     │   │   │   │   ├── timelineAgent.ts
+    │   │   │   │   ├── replyParseAgent.ts   # inbound mover replies → mover_quotes (§10.0)
     │   │   │   │   ├── movingDayAgent.ts
     │   │   │   │   └── settledAgent.ts
     │   │   │   └── index.ts
+    │   │   ├── harness/             # shared agent harness (§6.5)
+    │   │   │   ├── runtime.ts        # dispatch: direct | tool-runner | managed
+    │   │   │   ├── validate.ts       # Zod structured-output guardrails
+    │   │   │   └── eval.ts           # golden-case eval runner
     │   │   ├── prompts/
     │   │   │   └── index.ts
     │   │   └── types.ts
@@ -2059,6 +2220,8 @@ const supabase = createClient(url, anonKey, {
 // - Apple Sign In (mobile required by App Store for apps with social auth)
 // - Magic link (email)
 ```
+
+> **⚠️ Critical footgun — Drizzle bypasses RLS.** Drizzle connects with the Supabase **service role** by default, which **bypasses Row Level Security entirely.** RLS policies (§9) protect the Supabase client paths, but **server-side tRPC/Inngest queries via Drizzle do not get RLS enforcement.** Every server query that touches user data **must be explicitly scoped by `ctx.user.id` in code** (as §7.3's approval handler does with the ownership check), or run through a Supabase client carrying the user's JWT. Do not rely on RLS as the only tenant-isolation layer. Add this as a code-review gate.
 
 ### 12.2 Security Checklist
 
@@ -2223,7 +2386,9 @@ Environment variables (Vercel):
 - SENTRY_DSN
 ```
 
-### 14.2 Mobile Deployment (EAS)
+### 14.2 Mobile Deployment (EAS) — V2
+
+> **(V2 — deferred.)** No mobile builds in V1. The `eas.json` below applies when the mobile app is greenlit. V1 CI/CD = GitHub Actions for typecheck/lint/test; web CD is handled by Vercel's Git integration (the separate `deploy-web.yml` is unnecessary).
 
 ```json
 // apps/mobile/eas.json
@@ -2296,6 +2461,8 @@ jobs:
 ---
 
 ## 15. Cost Analysis — Full Breakdown
+
+> **V1 is web-only, which lowers cost.** The tables below include mobile line items (EAS Build, Expo push) and one-time store fees (Apple $99/yr, Google Play $25) — these are **V2 costs**; exclude them from the V1 run-rate. V1 infra is essentially Vercel + Supabase + Inngest + Anthropic + Nylas/Twilio/Resend + monitoring. Per-move Claude cost drops further with **prompt caching** (§2.3), so the ~$0.26/move lifecycle is a conservative ceiling.
 
 ### 15.1 Development Infrastructure Costs
 
@@ -2420,106 +2587,56 @@ Every customer is profitable on their first move. The episodic revenue model wit
 
 ---
 
-## 16. Build Timeline — Week-by-Week
+## 16. Build Timeline — Web-First (V1)
 
-### Phase 1: Foundation (Weeks 1–2)
+> **Scope:** web only. Mobile (Expo) is V2 — not in this timeline. Phases are sequenced **design-system-first, then one vertical HITL slice, then breadth** — not horizontal layers. Realistic to a polished web launch: **~10–14 weeks** solo (the original 8-week web+mobile plan was a feature-complete demo). Estimates below are guides, not contracts.
 
-**Week 1:**
-- [ ] Initialize Turborepo monorepo with `pnpm` workspaces
-- [ ] Create `apps/web` (Next.js 15) and `apps/mobile` (Expo 52)
-- [ ] Set up `packages/ui`, `packages/db`, `packages/trpc`, `packages/agents`, `packages/utils`
-- [ ] Configure NativeWind in mobile app; verify Tailwind classes render correctly on both platforms
-- [ ] Supabase project setup: database, auth, storage, RLS policies
-- [ ] Drizzle schema: `user_profiles`, `moves`, `tasks` (core tables only)
-- [ ] Supabase Auth: email + Google OAuth on web; Google + Apple on mobile
-- [ ] tRPC router skeleton: auth middleware, basic `moves` router
-- [ ] Deploy web to Vercel; run Expo on device via Expo Go
+### Phase 1 — Foundations + Design System (≈Weeks 1–2)
+- [ ] Initialize Turborepo monorepo (`pnpm` workspaces); create `apps/web` (Next.js 15) + `packages/ui|db|trpc|agents|utils`
+- [ ] **First artifact: `docs/design.md`** — synthesize from the reference repos (§4.0); define Warm Command Center tokens, guardrails, motion, perf rules
+- [ ] Generate `packages/ui/theme` tokens from `design.md`; install Tailwind v4 + shadcn/ui + Motion
+- [ ] Core component kit: `Button`, `Input`, `TaskCard`, `ApprovalCard`, `AgentStatusBadge`, `MoveProgress` (SVG/Motion ring)
+- [ ] Supabase project: DB, auth (email + Google OAuth), storage, RLS policies
+- [ ] Drizzle schema: `user_profiles`, `moves`, `tasks`, `agent_tasks`, `approval_items` (core); **scope all server queries by `userId`** (RLS footgun, §12)
+- [ ] tRPC skeleton (auth middleware, `moves` router) + Inngest wired; deploy web to Vercel
+- [ ] **`packages/agents/harness` skeleton** (§6.5): `AgentDef`, structured-output + Zod validation, cost logging, eval-case format
 
-**Week 2:**
-- [ ] Full Drizzle schema: all 12 tables from spec
-- [ ] Onboarding wizard: 5-step flow (web + mobile, pixel-identical)
-- [ ] Address autocomplete: Google Places API integration
-- [ ] MoveSetupAgent: Inngest function + Claude Sonnet prompt
-- [ ] Task list generation from move profile
-- [ ] `approval_items` table + HITL approval flow skeleton
-- [ ] Supabase Realtime: subscribe to agent task status changes
-- [ ] Design system: color tokens, typography scale, spacing in `packages/ui`
-- [ ] Core components: `TaskCard`, `Button`, `Input`, `AgentStatusBadge`
+### Phase 2 — One Vertical HITL Slice (≈Weeks 3–4)
+*Prove the core loop end-to-end on ONE agent before fanning out.*
+- [ ] Onboarding wizard (5 steps, web) + Google Places autocomplete
+- [ ] **MoveSetupAgent** via harness (Sonnet 4.6, structured outputs) → task list generation
+- [ ] Dashboard (progress ring + needs-review + upcoming deadlines)
+- [ ] **Approval inbox** + full HITL approve/edit/reject flow (§7) + Supabase Realtime status
+- [ ] First real action wired through approval → completion; agent-failure/empty states (§10.0)
 
-### Phase 2: Core Agent Loop (Weeks 3–4)
+### Phase 3 — Agent Breadth (≈Weeks 5–7)
+- [ ] **QuoteAgent** (FMCSA + RFQ drafting) + Nylas OAuth + approved-send execution + **ballpark estimate fallback** (§10.0)
+- [ ] **ReplyParseAgent** (Nylas inbound webhook → `mover_quotes`) — the other half of the quote loop
+- [ ] InternetAgent (ISP lookup + Haiku scoring; **label pricing as estimates**), UtilityAgent, AddressAgent, ServiceAgent
+- [ ] **TimelineAgent as orchestrator** (task graph + cross-agent cascades + idempotency keys)
+- [ ] Module UIs: movers, utilities, internet, address, services, timeline, task-detail
+- [ ] Moving Day Mode + SettledAgent (post-move)
 
-**Week 3:**
-- [ ] QuoteAgent: FMCSA API + Haiku classification + Sonnet email drafting
-- [ ] Nylas OAuth flow (web + mobile deep link)
-- [ ] Email execution: user approves → Inngest sends via Nylas
-- [ ] Mover quotes UI: comparison cards with red flag indicators
-- [ ] InternetAgent: SmartyStreets ISP lookup + Haiku scoring
-- [ ] ISP comparison table with affiliate links
-- [ ] Agent approval inbox: full HITL UI (web + mobile)
-- [ ] Move Progress Ring component with Reanimated animation (mobile)
+### Phase 4 — Notifications + Monetization (≈Weeks 8–10)
+- [ ] Inngest scheduling (all time-based triggers) + daily overdue cron
+- [ ] Resend (approval + weekly digest, React Email) + Web Push; **Twilio SMS** (start **A2P 10DLC registration now — weeks of lead time**)
+- [ ] Notification preferences + `notification_log`
+- [ ] Stripe one-time unlock + paywall + gift codes + RE-agent gifting portal
+- [ ] Affiliate tracking (server-side redirect) + link injection; Sentry + PostHog (+ agent kill-switch flags)
 
-**Week 4:**
-- [ ] UtilityAgent: origin cancel + destination setup logic
-- [ ] Utility module UI: split tabs (origin/destination)
-- [ ] AddressAgent: USPS + priority entity list + check-off tracker
-- [ ] Address change module: 20+ entity list with links and status
-- [ ] TimelineAgent: Inngest cron + dependency graph rendering
-- [ ] Timeline screen: Gantt-style scrollable view (web + mobile)
-- [ ] Task detail modal: full task info + agent output + completion
-- [ ] Push notification registration: Expo + Web Push setup
+### Phase 5 — Landing, Polish, Launch (≈Weeks 11–14)
+- [ ] **Landing page** — the high-impact animated surface (GSAP + R3F + shaders + Lottie), built via Claude→Kimi→Claude against `design.md`
+- [ ] SEO city pages + Instant Free Report acquisition hook
+- [ ] Eval suite green (per-agent golden cases) + E2E (Playwright) + external-API contract tests
+- [ ] Perf/a11y audit (Lighthouse, LCP/CLS, reduced-motion); DPA/privacy review
+- [ ] Beta: 10 users with active moves → web launch
 
-### Phase 3: Full Lifecycle + Notifications (Weeks 5–6)
-
-**Week 5:**
-- [ ] ServiceAgent: Google Places search + booking inquiry drafting
-- [ ] Services screen: cleaning, storage, handyman cards
-- [ ] Google Calendar API: add appointments from service bookings
-- [ ] Moving Day Mode: special screen, activated on move date
-- [ ] Moving day checklist: real-time check-off + mover contact
-- [ ] SettledAgent: post-move tasks (30 days after move)
-- [ ] Settled module: "You've moved! Here's what's left" screen
-
-**Week 6:**
-- [ ] Inngest scheduling: all time-based triggers (6wks, 3wks, 2wks, 1wk, day-of)
-- [ ] Twilio SMS: move eve reminder + moving day morning message
-- [ ] Resend email: agent approval notification + weekly digest templates
-- [ ] Push notifications: full registration + send from Inngest functions
-- [ ] Notification preferences settings screen
-- [ ] Daily cron: TimelineAgent refresh + overdue task detection
-- [ ] Notification log table + read receipts
-
-### Phase 4: Monetization + Polish (Weeks 7–8)
-
-**Week 7:**
-- [ ] Stripe: Payment Intent creation + webhook handler
-- [ ] Paywall UI: plan comparison modal (web + mobile)
-- [ ] Gift code redemption: validation + plan unlock
-- [ ] RE agent gifting portal: buy codes, view redemptions
-- [ ] Affiliate tracking: click events, server-side redirect
-- [ ] ISP + mover affiliate link injection in approval items
-- [ ] Affiliate revenue dashboard (admin view)
-- [ ] Sentry: error tracking on web + mobile
-- [ ] PostHog: product analytics + funnel tracking
-
-**Week 8:**
-- [ ] End-to-end testing: full move lifecycle (onboarding → settled)
-- [ ] Performance audit: Lighthouse (web) + Flipper profiling (mobile)
-- [ ] App Store assets: icon (1024×1024), splash screen, screenshots (6.7")
-- [ ] App Store / Play Store submissions
-- [ ] Landing page: hero, features, pricing, RE agent section
-- [ ] SEO: 5 city-specific landing pages
-- [ ] Instant Free Report page (viral acquisition hook)
-- [ ] Beta test: 10 users with active moves
-
-**Target: App Store approval + first paying customer by end of Week 8**
-
-### Timeline Risk Buffer
-- **App Store review:** Allow 2 weeks for first iOS submission approval
-- **EAS Build setup:** First build takes 1–2 days to configure properly
-- **Nylas OAuth approval:** May require Nylas to review/approve app (allow 1 week)
-- **Affiliate account approvals:** CJ Affiliate for Xfinity takes 3–7 days
-
-**Recommended:** Submit App Store at end of Week 6 (with core features complete), use Weeks 7–8 for monetization and polish while waiting for Apple review.
+### Lead-Time Risk Buffer (start these early)
+- **Twilio A2P 10DLC:** brand/campaign registration can take **1–3+ weeks** — begin in Phase 4 (or earlier).
+- **Nylas app review/approval:** allow ~1 week for send-on-behalf scopes.
+- **Affiliate approvals (CJ/Impact, ISP programs):** 3–7+ days each; program terms may constrain comparison/lead-gen framing.
+- **Inngest + Metro/Turborepo + R3F build config:** budget setup days.
+- *(V2, not V1):* Apple App Store review (~2 wks first submission), EAS Build setup, store assets.
 
 ---
 
@@ -2534,8 +2651,13 @@ Every customer is profitable on their first move. The episodic revenue model wit
 // Integration tests: tRPC routes with test database
 // vitest + supertest
 
-// E2E tests: Playwright (web) + Detox (mobile)
+// E2E tests: Playwright (web). Detox (mobile) → V2
 // Focus: full move lifecycle (onboard → approve → complete)
+
+// Agent eval tests: per-agent golden cases (Promptfoo / Anthropic evals) run in CI
+//   — regression-guard prompts; gate on output-schema validity + quality rubric
+// External-API contract tests: record/replay (FMCSA, FCC/ISP, Nylas, Google Places)
+//   — so agent logic is tested without live API flakiness
 
 // Manual testing matrix per sprint:
 // - iOS 17+ (iPhone 15, iPhone SE 3rd gen)
@@ -2554,7 +2676,7 @@ Every customer is profitable on their first move. The episodic revenue model wit
 ```
 1. Full HITL flow: Agent creates approval → user approves → email sends via Nylas
 2. Inngest retry: Agent function fails → retries 3x → failure alert
-3. Realtime: Agent status update visible on both web and mobile simultaneously
+3. Realtime: Agent status update visible on web in real time (mobile parity in V2)
 4. Payment: Stripe webhook → move plan upgraded → agents unlocked
 5. Gift code: RE agent creates code → user redeems → plan upgraded
 6. Affiliate: User clicks ISP link → click tracked → conversion tracked
