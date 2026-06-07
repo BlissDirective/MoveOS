@@ -1,0 +1,16 @@
+@import "tailwindcss";
+
+/* Design tokens are injected here once a direction is chosen and
+   docs/design.md → packages/ui/theme is generated. */
+
+:root {
+  --background: #faf9f7;
+  --foreground: #1e1c1a;
+}
+
+html,
+body {
+  background: var(--background);
+  color: var(--foreground);
+  -webkit-font-smoothing: antialiased;
+}
