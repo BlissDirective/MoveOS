@@ -1,6 +1,17 @@
-// @moveros/agents — agent definitions + prompts + the shared agent harness.
-// Phase 1 adds: packages/agents/harness (AgentDef, runtime dispatch, Zod
-// validate gate, cost logging, eval runner) per spec §6.5, plus the Inngest
-// client. Placeholder export keeps the package type-checkable.
+// @moveros/agents — agent definitions + the shared agent harness (spec §6.5).
+//
+// Phase 1 increment 2 delivers:
+//   • harness/ — AgentDef, runAgent (direct runtime + Zod validate gate),
+//     guardrails, cost ledger, and a golden-case eval runner.
+//   • inngest/ — the MoverOS Inngest client + typed event map.
+//   • defs/    — the first agent definition (reply_parse) as a worked example.
 
-export const AGENTS_PACKAGE = "@moveros/agents" as const;
+export * from "./harness";
+export { inngest } from "./inngest/client";
+export type { MoverOsEvents } from "./inngest/client";
+export {
+  replyParseAgent,
+  replyParseInput,
+  replyParseOutput,
+} from "./defs/reply-parse";
+export type { ReplyParseInput, ReplyParseOutput } from "./defs/reply-parse";

@@ -1,6 +1,14 @@
-// @moveros/db — Drizzle schema + Supabase client + integrations.
-// Phase 1 adds: core schema (user_profiles, moves, tasks, agent_tasks,
-// approval_items), a scopedDb(userId) repository pattern (RLS footgun fix),
-// and migrations. Placeholder export keeps the package type-checkable.
+// @moveros/db — Drizzle schema + scoped client for MoverOS.
+//
+// Phase 1 increment 2 delivers:
+//   • Core schema: user_profiles, moves, tasks, agent_tasks, approval_items.
+//   • createDb/getDb — the service-role Drizzle client (bypasses RLS).
+//   • scopedDb(db, userId) — the repository pattern that bakes ownership
+//     filters into every read (the RLS-bypass footgun fix from the review).
 
-export const DB_PACKAGE = "@moveros/db" as const;
+export * as schema from "./schema";
+export * from "./schema";
+export { createDb, getDb } from "./client";
+export type { Database } from "./client";
+export { scopedDb, NotOwnedError } from "./scoped";
+export type { ScopedDb } from "./scoped";
