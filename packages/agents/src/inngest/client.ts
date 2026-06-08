@@ -19,6 +19,12 @@ export type MoverOsEvents = {
       agentType: string;
     };
   };
+  "move/created": {
+    data: {
+      moveId: string;
+      userId: string;
+    };
+  };
   "email/reply.received": {
     data: {
       moveId: string;

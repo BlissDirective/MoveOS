@@ -17,7 +17,7 @@ export {
   rateLimited,
 } from "./trpc";
 export { createTRPCContext, createInnerContext } from "./context";
-export type { Context, CreateContextOptions } from "./context";
+export type { Context, CreateContextOptions, AppEvents } from "./context";
 export { getUserIdFromToken } from "./auth";
 export { inMemoryRateLimiter } from "./rate-limit";
 export type { RateLimiter } from "./rate-limit";

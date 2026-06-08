@@ -1,6 +1,13 @@
 import { and, eq, desc } from "drizzle-orm";
 import type { Database } from "./client";
 import { moves, tasks, agentTasks, approvalItems } from "./schema";
+import type { NewMove } from "./schema";
+
+/** Fields a caller supplies when creating a move (userId is injected by scope). */
+export type CreateMoveInput = Omit<
+  NewMove,
+  "id" | "userId" | "createdAt" | "updatedAt"
+>;
 
 /**
  * Thrown when a user references a move (or a child of a move) they don't own.
@@ -52,6 +59,16 @@ export function scopedDb(db: Database, userId: string) {
       },
       /** A single owned move, or throw. */
       get: requireMove,
+
+      /** Create a move owned by this user. */
+      async create(input: CreateMoveInput) {
+        const [row] = await db
+          .insert(moves)
+          .values({ ...input, userId })
+          .returning();
+        if (!row) throw new Error("failed to insert move");
+        return row;
+      },
     },
 
     tasks: {

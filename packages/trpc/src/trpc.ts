@@ -30,7 +30,7 @@ const enforceAuth = t.middleware(({ ctx, next }) => {
     throw new TRPCError({ code: "UNAUTHORIZED" });
   }
   return next({
-    ctx: { db: ctx.db, userId: ctx.userId, scoped: ctx.scoped },
+    ctx: { db: ctx.db, userId: ctx.userId, scoped: ctx.scoped, events: ctx.events },
   });
 });
 
