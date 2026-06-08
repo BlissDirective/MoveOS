@@ -10,7 +10,14 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.102.0",
+    "@moveros/agents": "workspace:*",
+    "@moveros/db": "workspace:*",
+    "@moveros/trpc": "workspace:*",
     "@moveros/ui": "workspace:*",
+    "@trpc/server": "^11.0.0",
+    "drizzle-orm": "^0.38.0",
+    "inngest": "^3.44.0",
     "next": "^15.2.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"

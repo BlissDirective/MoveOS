@@ -1,8 +1,14 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Transpile the shared design-system package (ships as TS source).
-  transpilePackages: ["@moveros/ui"],
+  // Workspace packages ship as TS source — Next must transpile them.
+  transpilePackages: [
+    "@moveros/ui",
+    "@moveros/db",
+    "@moveros/agents",
+    "@moveros/trpc",
+    "@moveros/utils",
+  ],
 };
 
 export default nextConfig;
