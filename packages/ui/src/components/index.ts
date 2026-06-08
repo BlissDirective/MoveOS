@@ -1,5 +1,7 @@
 export { Button } from "./Button";
 export type { ButtonProps } from "./Button";
+export { Input, Field } from "./Input";
+export type { InputProps, FieldProps } from "./Input";
 export { AgentStatusBadge } from "./AgentStatusBadge";
 export type { AgentStatusBadgeProps } from "./AgentStatusBadge";
 export { PriorityChip } from "./PriorityChip";

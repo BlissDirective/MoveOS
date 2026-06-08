@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import {
   ApprovalCard,
   MoveProgress,
@@ -46,6 +47,14 @@ const tasks: TaskCardProps[] = [
 export default function Home() {
   return (
     <main className="mx-auto flex min-h-screen max-w-3xl flex-col gap-12 px-8 py-16">
+      <nav className="flex items-center justify-end gap-4 text-[14px] font-medium">
+        <Link href="/auth/sign-in" className="text-neutral-600 hover:text-neutral-900">
+          Sign in
+        </Link>
+        <Link href="/dashboard" className="text-brand-600 hover:text-brand-700">
+          Dashboard
+        </Link>
+      </nav>
       <header className="flex flex-col items-center gap-6 text-center">
         <MoveProgress daysUntilMove={32} tasksCompleted={8} taskCount={12} />
         <div>
