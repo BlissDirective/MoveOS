@@ -1,6 +1,9 @@
 @import "tailwindcss";
 @import "@moveros/ui/styles/tokens.css";
 
+/* Scan the shared component package so its utility classes are generated. */
+@source "../../../packages/ui/src";
+
 /* App surface defaults, sourced from the design tokens (docs/design.md). */
 :root {
   --background: var(--color-surface-base);
