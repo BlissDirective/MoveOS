@@ -1,5 +1,28 @@
-// Design tokens — generated from docs/design.md once a direction is chosen.
-// Seeded from spec §4.2–§4.6 (colors, typography, spacing, motion). This file
-// becomes the single TS source of truth that Tailwind config consumes.
+// Design tokens — the TS source of truth, generated from docs/design.md.
+// docs/design.md is authoritative; if these disagree, update code to match it.
 
-export const THEME_PLACEHOLDER = true as const;
+export * from "./colors";
+export * from "./typography";
+export * from "./spacing";
+export * from "./elevation";
+export * from "./motion";
+
+import { colors } from "./colors";
+import { typography, fontFamily } from "./typography";
+import { spacing, radius, pagePadding } from "./spacing";
+import { elevation } from "./elevation";
+import { motion } from "./motion";
+
+/** The full token set as one object (handy for the Tailwind preset). */
+export const theme = {
+  colors,
+  typography,
+  fontFamily,
+  spacing,
+  radius,
+  pagePadding,
+  elevation,
+  motion,
+} as const;
+
+export type Theme = typeof theme;

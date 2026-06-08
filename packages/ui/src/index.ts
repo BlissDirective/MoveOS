@@ -1,7 +1,11 @@
-// @moveros/ui — shared design system (tokens + components).
-// The component kit (Button, Input, TaskCard, ApprovalCard, AgentStatusBadge,
-// MoveProgress) is built in Phase 1 from docs/design.md, after a design
-// direction is chosen. Tokens live in ./theme. Placeholder export for now.
+// @moveros/ui — shared design system.
+//
+// Direction: Warm Command Center · Soft Depth / Tactile (docs/design.md).
+//   • ./theme              — TS design tokens (source of truth in code).
+//   • ./styles/tokens.css  — Tailwind v4 @theme tokens for web (CSS vars +
+//                            generated utilities).
+// The component kit (Button, TaskCard, ApprovalCard, AgentStatusBadge,
+// MoveProgress) is built next, on top of these tokens.
 
 export const UI_PACKAGE = "@moveros/ui" as const;
 export * from "./theme";

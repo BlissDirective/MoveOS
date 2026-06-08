@@ -1,16 +1,17 @@
 @import "tailwindcss";
+@import "@moveros/ui/styles/tokens.css";
 
-/* Design tokens are injected here once a direction is chosen and
-   docs/design.md → packages/ui/theme is generated. */
-
+/* App surface defaults, sourced from the design tokens (docs/design.md). */
 :root {
-  --background: #faf9f7;
-  --foreground: #1e1c1a;
+  --background: var(--color-surface-base);
+  --foreground: var(--color-neutral-900);
 }
 
 html,
 body {
   background: var(--background);
   color: var(--foreground);
+  font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
