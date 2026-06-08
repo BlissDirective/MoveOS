@@ -25,3 +25,30 @@ jobs:
       - run: pnpm build
 
       - run: pnpm typecheck
+
+  # Return gate for Kimi K2.6 build output (see docs/kimi-handoff.md). Validates
+  # any handoff files by convention (handoff/**/*.txt or **/*.kimi.txt) and skips
+  # cleanly when there are none, so it activates the moment Kimi output lands.
+  kimi-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Validate Kimi handoff output
+        run: |
+          shopt -s globstar nullglob
+          files=(handoff/**/*.txt **/*.kimi.txt)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "No Kimi handoff files (handoff/**/*.txt or **/*.kimi.txt) — skipping gate."
+            exit 0
+          fi
+          fail=0
+          for f in "${files[@]}"; do
+            echo "== validating $f =="
+            node scripts/validate-kimi-output.mjs "$f" || fail=1
+          done
+          exit $fail
