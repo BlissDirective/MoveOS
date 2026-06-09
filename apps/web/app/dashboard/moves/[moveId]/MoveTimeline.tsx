@@ -1,6 +1,6 @@
 "use client";
 
-import { MoveProgress, TaskCard } from "@moveros/ui";
+import { Button, MoveProgress, TaskCard } from "@moveros/ui";
 import { trpc } from "@/lib/trpc/client";
 import { daysUntil, dueLabel } from "@/lib/format";
 
@@ -15,6 +15,9 @@ export function MoveTimeline({ moveId }: { moveId: string }) {
   };
   const complete = trpc.tasks.complete.useMutation({ onSuccess: refreshTasks });
   const skip = trpc.tasks.skip.useMutation({ onSuccess: refreshTasks });
+  const requestQuotes = trpc.moves.requestQuotes.useMutation({
+    onSuccess: () => utils.approvals.listPending.invalidate(),
+  });
 
   if (move.error) {
     return <p className="text-[15px] text-error">{move.error.message}</p>;
@@ -34,6 +37,22 @@ export function MoveTimeline({ moveId }: { moveId: string }) {
               ? `Your move to ${move.data.destinationCity}`
               : "Your move"}
           </h1>
+          <div className="flex flex-col items-center gap-1">
+            <Button
+              size="sm"
+              variant="secondary"
+              isLoading={requestQuotes.isPending}
+              disabled={requestQuotes.isSuccess}
+              onClick={() => requestQuotes.mutate({ moveId })}
+            >
+              Get moving quotes
+            </Button>
+            {requestQuotes.isSuccess ? (
+              <p className="text-[12px] text-neutral-500">
+                Drafting your request — check the approval inbox in a moment.
+              </p>
+            ) : null}
+          </div>
         </header>
       ) : null}
 

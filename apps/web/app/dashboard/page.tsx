@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { MovesList } from "./MovesList";
 import { ApprovalInbox } from "./ApprovalInbox";
+import { NylasConnection } from "./NylasConnection";
 import { SignOutButton } from "./SignOutButton";
 
 export default async function DashboardPage() {
@@ -22,6 +23,8 @@ export default async function DashboardPage() {
         </div>
         <SignOutButton />
       </header>
+
+      <NylasConnection />
 
       <section className="flex flex-col gap-3">
         <h2 className="font-mono text-[11px] uppercase tracking-wide text-neutral-500">

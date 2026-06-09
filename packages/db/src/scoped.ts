@@ -1,6 +1,6 @@
 import { and, eq, desc, sql } from "drizzle-orm";
 import type { Database } from "./client";
-import { moves, tasks, agentTasks, approvalItems } from "./schema";
+import { moves, tasks, agentTasks, approvalItems, userProfiles } from "./schema";
 import type { NewMove } from "./schema";
 
 /** Fields a caller supplies when creating a move (userId is injected by scope). */
@@ -67,6 +67,18 @@ export function scopedDb(db: Database, userId: string) {
   return {
     userId,
     requireMove,
+
+    profile: {
+      /** This user's profile row (or null if not yet provisioned). */
+      async get() {
+        const [row] = await db
+          .select()
+          .from(userProfiles)
+          .where(eq(userProfiles.id, userId))
+          .limit(1);
+        return row ?? null;
+      },
+    },
 
     moves: {
       /** All moves owned by this user, newest first. */
@@ -216,8 +228,8 @@ export function scopedDb(db: Database, userId: string) {
         return updated!;
       },
 
-      /** Approve with edits (e.g. a reworded email body). */
-      async edit(approvalId: string, edits: { body?: string }) {
+      /** Approve with edits (e.g. a reworded body or a chosen recipient). */
+      async edit(approvalId: string, edits: { body?: string; emailTo?: string }) {
         const ap = await requireApproval(approvalId);
         const [updated] = await db
           .update(approvalItems)
@@ -226,6 +238,7 @@ export function scopedDb(db: Database, userId: string) {
             approvedAt: new Date(),
             userEdits: edits,
             emailBody: edits.body ?? ap.emailBody,
+            emailTo: edits.emailTo ?? ap.emailTo,
             updatedAt: new Date(),
           })
           .where(eq(approvalItems.id, approvalId))

@@ -4,10 +4,16 @@ import {
   parseEmailReply,
   generateTimeline,
   dispatchApprovedAction,
+  requestQuotes,
 } from "@/lib/inngest/functions";
 
 // The Inngest endpoint. Inngest discovers and invokes registered functions here.
 export const { GET, POST, PUT } = serve({
   client: inngest,
-  functions: [parseEmailReply, generateTimeline, dispatchApprovedAction],
+  functions: [
+    parseEmailReply,
+    generateTimeline,
+    dispatchApprovedAction,
+    requestQuotes,
+  ],
 });

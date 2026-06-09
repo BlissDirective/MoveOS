@@ -26,3 +26,5 @@ export type {
   TimelineOutput,
   TimelineTask,
 } from "./defs/timeline";
+export { quoteAgent, quoteInput, quoteOutput } from "./defs/quote";
+export type { QuoteInput, QuoteOutput } from "./defs/quote";

@@ -42,6 +42,18 @@ export const movesRouter = router({
       return { id: move.id };
     }),
 
+  /** Kick the quote agent to draft vendor outreach for this move. */
+  requestQuotes: protectedProcedure
+    .input(moveId)
+    .mutation(async ({ ctx, input }) => {
+      await ctx.scoped.requireMove(input.moveId); // ownership check
+      await ctx.events.quotesRequested({
+        moveId: input.moveId,
+        userId: ctx.userId,
+      });
+      return { ok: true };
+    }),
+
   tasks: protectedProcedure
     .input(moveId)
     .query(({ ctx, input }) => ctx.scoped.tasks.listForMove(input.moveId)),

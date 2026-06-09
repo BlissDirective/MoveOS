@@ -27,10 +27,16 @@ export const approvalsRouter = router({
     }),
 
   edit: protectedProcedure
-    .input(approvalId.extend({ body: z.string().optional() }))
+    .input(
+      approvalId.extend({
+        body: z.string().optional(),
+        emailTo: z.string().email().optional(),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
       const ap = await ctx.scoped.approvals.edit(input.approvalId, {
         body: input.body,
+        emailTo: input.emailTo,
       });
       await ctx.events.approvalApproved({
         approvalId: ap.id,

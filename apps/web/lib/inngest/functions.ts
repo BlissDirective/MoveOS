@@ -14,9 +14,11 @@ import {
   replyParseAgent,
   runAgent,
   timelineAgent,
+  quoteAgent,
   type ReplyParseInput,
   type TimelineInput,
   type TimelineTask,
+  type QuoteInput,
 } from "@moveros/agents";
 
 type TimelineOutcome = {
@@ -308,5 +310,124 @@ export const dispatchApprovedAction = inngest.createFunction(
     });
 
     return { sent: true, simulated: sent.simulated, threadId: sent.threadId };
+  },
+);
+
+type QuoteOutcome = {
+  ok: boolean;
+  summary: string;
+  emailSubject: string;
+  emailBody: string;
+  model: string;
+  inputTokens: number;
+  outputTokens: number;
+  costUsd: number;
+  error: string | null;
+};
+
+/**
+ * request-quotes — runs the quote agent to draft vendor outreach, then drops the
+ * draft into the approval queue (requiresEmailSend, awaiting recipient + approval).
+ * This is what fills the inbox from a real agent run.
+ */
+export const requestQuotes = inngest.createFunction(
+  { id: "request-quotes", retries: 2 },
+  { event: "quote/requested" },
+  async ({ event, step }) => {
+    const { moveId } = event.data;
+    const db = getDb();
+
+    const move = await step.run("load-move", async () => {
+      const [row] = await db.select().from(moves).where(eq(moves.id, moveId)).limit(1);
+      if (!row) throw new Error(`move ${moveId} not found`);
+      return row;
+    });
+
+    const agentTaskId = await step.run("create-agent-task", async () => {
+      const [row] = await db
+        .insert(agentTasks)
+        .values({ moveId, agentType: "quote", status: "running", startedAt: new Date() })
+        .returning({ id: agentTasks.id });
+      if (!row) throw new Error("failed to create agent_tasks row");
+      return row.id;
+    });
+
+    const outcome = await step.run("run-quote", async (): Promise<QuoteOutcome> => {
+      const client = new Anthropic();
+      const input: QuoteInput = {
+        originCity: move.originCity ?? "",
+        originState: move.originState ?? "",
+        destinationCity: move.destinationCity ?? "",
+        destinationState: move.destinationState ?? "",
+        moveDate: move.moveDate,
+        homeSize: move.homeSize,
+        moveType: move.moveType ?? null,
+        specialItems: move.specialItems ?? [],
+      };
+      const result = await runAgent(quoteAgent, input, { client });
+      return result.ok
+        ? {
+            ok: true,
+            summary: result.output.summary,
+            emailSubject: result.output.emailSubject,
+            emailBody: result.output.emailBody,
+            model: quoteAgent.model,
+            inputTokens: result.usage.inputTokens,
+            outputTokens: result.usage.outputTokens,
+            costUsd: result.costUsd,
+            error: null,
+          }
+        : {
+            ok: false,
+            summary: "",
+            emailSubject: "",
+            emailBody: "",
+            model: quoteAgent.model,
+            inputTokens: 0,
+            outputTokens: 0,
+            costUsd: 0,
+            error: result.error,
+          };
+    });
+
+    await step.run("persist", async () => {
+      if (!outcome.ok) {
+        await db
+          .update(agentTasks)
+          .set({ status: "failed", failedAt: new Date(), errorMessage: outcome.error })
+          .where(eq(agentTasks.id, agentTaskId));
+        return;
+      }
+
+      await db.insert(approvalItems).values({
+        moveId,
+        agentTaskId,
+        agentType: "quote",
+        status: "awaiting_approval",
+        priority: "high",
+        title: "Send a quote request to a mover",
+        body: outcome.summary,
+        requiresEmailSend: true,
+        emailTo: "", // user sets the recipient in the inbox before approving
+        emailSubject: outcome.emailSubject,
+        emailBody: outcome.emailBody,
+        outputData: { summary: outcome.summary },
+      });
+
+      await db
+        .update(agentTasks)
+        .set({
+          status: "awaiting_approval",
+          completedAt: new Date(),
+          outputData: { summary: outcome.summary },
+          llmModel: outcome.model,
+          inputTokens: outcome.inputTokens,
+          outputTokens: outcome.outputTokens,
+          estimatedCostUsd: outcome.costUsd.toFixed(6),
+        })
+        .where(eq(agentTasks.id, agentTaskId));
+    });
+
+    return { agentTaskId, ok: outcome.ok };
   },
 );

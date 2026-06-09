@@ -13,6 +13,7 @@ export interface AppEvents {
     moveId: string;
     userId: string;
   }): Promise<void>;
+  quotesRequested(data: { moveId: string; userId: string }): Promise<void>;
 }
 
 const noopEvents: AppEvents = {
@@ -20,6 +21,9 @@ const noopEvents: AppEvents = {
     /* no-op when no emitter is wired (tests, build) */
   },
   async approvalApproved() {
+    /* no-op */
+  },
+  async quotesRequested() {
     /* no-op */
   },
 };

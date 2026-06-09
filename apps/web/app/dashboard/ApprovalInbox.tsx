@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { inferRouterOutputs } from "@trpc/server";
 import type { AppRouter } from "@moveros/trpc";
-import { ApprovalCard, Button, Textarea } from "@moveros/ui";
+import { ApprovalCard, Button, Field, Input, Textarea } from "@moveros/ui";
 import { trpc } from "@/lib/trpc/client";
 
 type PendingApproval =
@@ -54,12 +54,24 @@ function ApprovalInboxItem({ item }: { item: PendingApproval }) {
 
   const [editing, setEditing] = useState(false);
   const [body, setBody] = useState(item.emailBody ?? "");
+  const [to, setTo] = useState(item.emailTo ?? "");
   const busy = approve.isPending || reject.isPending || edit.isPending;
 
   if (editing) {
     return (
       <div className="flex flex-col gap-3 rounded-lg border border-accent-200 bg-surface-card p-5 shadow-e2">
         <h3 className="text-[18px] font-semibold text-neutral-900">{item.title}</h3>
+        {item.requiresEmailSend ? (
+          <Field label="To" htmlFor={`to-${item.id}`}>
+            <Input
+              id={`to-${item.id}`}
+              type="email"
+              placeholder="mover@example.com"
+              value={to}
+              onChange={(e) => setTo(e.target.value)}
+            />
+          </Field>
+        ) : null}
         <Textarea
           value={body}
           onChange={(e) => setBody(e.target.value)}
@@ -69,7 +81,13 @@ function ApprovalInboxItem({ item }: { item: PendingApproval }) {
           <Button
             size="md"
             isLoading={edit.isPending}
-            onClick={() => edit.mutate({ approvalId: item.id, body })}
+            onClick={() =>
+              edit.mutate({
+                approvalId: item.id,
+                body,
+                emailTo: to.trim() || undefined,
+              })
+            }
           >
             Approve &amp; Send
           </Button>
@@ -102,6 +120,7 @@ function ApprovalInboxItem({ item }: { item: PendingApproval }) {
         item.requiresEmailSend && !busy
           ? () => {
               setBody(item.emailBody ?? "");
+              setTo(item.emailTo ?? "");
               setEditing(true);
             }
           : undefined

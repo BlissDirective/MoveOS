@@ -13,6 +13,9 @@ const events: AppEvents = {
   async approvalApproved(data) {
     await inngest.send({ name: "approval/approved", data });
   },
+  async quotesRequested(data) {
+    await inngest.send({ name: "quote/requested", data });
+  },
 };
 
 // The tRPC HTTP endpoint. Context resolves the Supabase user from the request
