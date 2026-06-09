@@ -8,11 +8,19 @@ import { getUserIdFromToken } from "./auth";
  */
 export interface AppEvents {
   moveCreated(data: { moveId: string; userId: string }): Promise<void>;
+  approvalApproved(data: {
+    approvalId: string;
+    moveId: string;
+    userId: string;
+  }): Promise<void>;
 }
 
 const noopEvents: AppEvents = {
   async moveCreated() {
     /* no-op when no emitter is wired (tests, build) */
+  },
+  async approvalApproved() {
+    /* no-op */
   },
 };
 

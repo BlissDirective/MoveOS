@@ -4,6 +4,8 @@ export { Input, Field } from "./Input";
 export type { InputProps, FieldProps } from "./Input";
 export { Select } from "./Select";
 export type { SelectProps } from "./Select";
+export { Textarea } from "./Textarea";
+export type { TextareaProps } from "./Textarea";
 export { Stepper } from "./Stepper";
 export type { StepperProps } from "./Stepper";
 export { AgentStatusBadge } from "./AgentStatusBadge";

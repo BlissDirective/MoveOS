@@ -25,6 +25,13 @@ export type MoverOsEvents = {
       userId: string;
     };
   };
+  "approval/approved": {
+    data: {
+      approvalId: string;
+      moveId: string;
+      userId: string;
+    };
+  };
   "email/reply.received": {
     data: {
       moveId: string;

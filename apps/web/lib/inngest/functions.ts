@@ -1,6 +1,14 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { eq } from "drizzle-orm";
-import { getDb, agentTasks, approvalItems, moves, tasks } from "@moveros/db";
+import {
+  getDb,
+  agentTasks,
+  approvalItems,
+  moves,
+  tasks,
+  userProfiles,
+} from "@moveros/db";
+import { sendEmail } from "../nylas/send";
 import {
   inngest,
   replyParseAgent,
@@ -247,5 +255,58 @@ export const generateTimeline = inngest.createFunction(
     });
 
     return { agentTaskId, taskCount: outcome.tasks.length, ok: outcome.ok };
+  },
+);
+
+/**
+ * dispatch-approved-action — performs the gated action behind an approval once
+ * the user approves it. For email-send items, resolves the user's Nylas grant
+ * and sends, then records the send. No-ops for items that aren't email sends or
+ * were already sent. (Sends are simulated until Nylas is configured.)
+ */
+export const dispatchApprovedAction = inngest.createFunction(
+  { id: "dispatch-approved-action", retries: 2 },
+  { event: "approval/approved" },
+  async ({ event, step }) => {
+    const { approvalId } = event.data;
+    const db = getDb();
+
+    const approval = await step.run("load-approval", async () => {
+      const [row] = await db
+        .select()
+        .from(approvalItems)
+        .where(eq(approvalItems.id, approvalId))
+        .limit(1);
+      if (!row) throw new Error(`approval ${approvalId} not found`);
+      return row;
+    });
+
+    if (!approval.requiresEmailSend || approval.emailSentAt || !approval.emailTo) {
+      return { sent: false, reason: "no email to send" };
+    }
+
+    const sent = await step.run("send-email", async () => {
+      const [profile] = await db
+        .select({ grantId: userProfiles.nylasGrantId })
+        .from(userProfiles)
+        .innerJoin(moves, eq(moves.userId, userProfiles.id))
+        .where(eq(moves.id, approval.moveId))
+        .limit(1);
+      return sendEmail({
+        grantId: profile?.grantId ?? null,
+        to: approval.emailTo ?? "",
+        subject: approval.emailSubject ?? "",
+        body: approval.emailBody ?? "",
+      });
+    });
+
+    await step.run("record-sent", async () => {
+      await db
+        .update(approvalItems)
+        .set({ emailSentAt: new Date(), emailThreadId: sent.threadId, updatedAt: new Date() })
+        .where(eq(approvalItems.id, approvalId));
+    });
+
+    return { sent: true, simulated: sent.simulated, threadId: sent.threadId };
   },
 );

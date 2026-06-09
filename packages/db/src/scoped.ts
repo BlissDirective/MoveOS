@@ -1,4 +1,4 @@
-import { and, eq, desc } from "drizzle-orm";
+import { and, eq, desc, sql } from "drizzle-orm";
 import type { Database } from "./client";
 import { moves, tasks, agentTasks, approvalItems } from "./schema";
 import type { NewMove } from "./schema";
@@ -10,13 +10,13 @@ export type CreateMoveInput = Omit<
 >;
 
 /**
- * Thrown when a user references a move (or a child of a move) they don't own.
- * Routers should map this to a 404/FORBIDDEN — never leak whether the id
- * exists for some other user.
+ * Thrown when a user references a move (or a child of a move — task, approval)
+ * they don't own. Routers map this to a 404 — never leak whether the id exists
+ * for some other user.
  */
 export class NotOwnedError extends Error {
-  constructor(public readonly moveId: string) {
-    super(`Move ${moveId} not found for this user`);
+  constructor(public readonly id: string) {
+    super(`${id} not found for this user`);
     this.name = "NotOwnedError";
   }
 }
@@ -41,6 +41,26 @@ export function scopedDb(db: Database, userId: string) {
       .where(and(eq(moves.id, moveId), eq(moves.userId, userId)))
       .limit(1);
     if (!row) throw new NotOwnedError(moveId);
+    return row;
+  }
+
+  /** Load a task whose parent move the user owns, or throw. */
+  async function requireTask(taskId: string) {
+    const [row] = await db.select().from(tasks).where(eq(tasks.id, taskId)).limit(1);
+    if (!row) throw new NotOwnedError(taskId);
+    await requireMove(row.moveId);
+    return row;
+  }
+
+  /** Load an approval whose parent move the user owns, or throw. */
+  async function requireApproval(approvalId: string) {
+    const [row] = await db
+      .select()
+      .from(approvalItems)
+      .where(eq(approvalItems.id, approvalId))
+      .limit(1);
+    if (!row) throw new NotOwnedError(approvalId);
+    await requireMove(row.moveId);
     return row;
   }
 
@@ -81,6 +101,43 @@ export function scopedDb(db: Database, userId: string) {
           .where(eq(tasks.moveId, moveId))
           .orderBy(tasks.sortOrder);
       },
+
+      /** Mark a task done (idempotent) and bump the move's completed counter. */
+      async complete(taskId: string, notes?: string) {
+        const task = await requireTask(taskId);
+        if (task.status === "completed") return task;
+        const [updated] = await db
+          .update(tasks)
+          .set({
+            status: "completed",
+            completedAt: new Date(),
+            completionNotes: notes ?? task.completionNotes,
+            updatedAt: new Date(),
+          })
+          .where(eq(tasks.id, taskId))
+          .returning();
+        await db
+          .update(moves)
+          .set({ tasksCompleted: sql`${moves.tasksCompleted} + 1`, updatedAt: new Date() })
+          .where(eq(moves.id, task.moveId));
+        return updated!;
+      },
+
+      /** Skip a task with an optional reason. */
+      async skip(taskId: string, reason?: string) {
+        await requireTask(taskId);
+        const [updated] = await db
+          .update(tasks)
+          .set({
+            status: "skipped",
+            skippedAt: new Date(),
+            skippedReason: reason ?? null,
+            updatedAt: new Date(),
+          })
+          .where(eq(tasks.id, taskId))
+          .returning();
+        return updated!;
+      },
     },
 
     agentTasks: {
@@ -109,6 +166,71 @@ export function scopedDb(db: Database, userId: string) {
             ),
           )
           .orderBy(desc(approvalItems.createdAt));
+      },
+
+      /** The user's whole pending inbox, across all their moves. */
+      async pendingForUser() {
+        const rows = await db
+          .select({ a: approvalItems })
+          .from(approvalItems)
+          .innerJoin(moves, eq(approvalItems.moveId, moves.id))
+          .where(
+            and(
+              eq(moves.userId, userId),
+              eq(approvalItems.status, "awaiting_approval"),
+            ),
+          )
+          .orderBy(desc(approvalItems.createdAt));
+        return rows.map((r) => r.a);
+      },
+
+      /** Approve an item (the send/spend it gates happens downstream). */
+      async approve(approvalId: string) {
+        const ap = await requireApproval(approvalId);
+        const [updated] = await db
+          .update(approvalItems)
+          .set({
+            status: "approved",
+            approvedAt: new Date(),
+            readAt: ap.readAt ?? new Date(),
+            updatedAt: new Date(),
+          })
+          .where(eq(approvalItems.id, approvalId))
+          .returning();
+        return updated!;
+      },
+
+      /** Reject an item with an optional reason. */
+      async reject(approvalId: string, reason?: string) {
+        await requireApproval(approvalId);
+        const [updated] = await db
+          .update(approvalItems)
+          .set({
+            status: "rejected",
+            rejectedAt: new Date(),
+            rejectionReason: reason ?? null,
+            updatedAt: new Date(),
+          })
+          .where(eq(approvalItems.id, approvalId))
+          .returning();
+        return updated!;
+      },
+
+      /** Approve with edits (e.g. a reworded email body). */
+      async edit(approvalId: string, edits: { body?: string }) {
+        const ap = await requireApproval(approvalId);
+        const [updated] = await db
+          .update(approvalItems)
+          .set({
+            status: "edited_approved",
+            approvedAt: new Date(),
+            userEdits: edits,
+            emailBody: edits.body ?? ap.emailBody,
+            updatedAt: new Date(),
+          })
+          .where(eq(approvalItems.id, approvalId))
+          .returning();
+        return updated!;
       },
     },
   };

@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { MovesList } from "./MovesList";
+import { ApprovalInbox } from "./ApprovalInbox";
 import { SignOutButton } from "./SignOutButton";
 
 export default async function DashboardPage() {
@@ -22,7 +23,19 @@ export default async function DashboardPage() {
         <SignOutButton />
       </header>
 
-      <MovesList />
+      <section className="flex flex-col gap-3">
+        <h2 className="font-mono text-[11px] uppercase tracking-wide text-neutral-500">
+          Needs your approval
+        </h2>
+        <ApprovalInbox />
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="font-mono text-[11px] uppercase tracking-wide text-neutral-500">
+          Your moves
+        </h2>
+        <MovesList />
+      </section>
     </main>
   );
 }

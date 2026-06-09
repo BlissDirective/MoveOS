@@ -35,14 +35,16 @@ export function MovesList() {
   return (
     <ul className="flex flex-col gap-2">
       {moves.data.map((m) => (
-        <li
-          key={m.id}
-          className="flex items-center justify-between rounded-lg border border-surface-border bg-surface-card p-4 shadow-e1"
-        >
-          <span className="font-medium text-neutral-900">
-            {m.destinationCity ?? "New move"}
-          </span>
-          <span className="font-mono text-[12px] text-neutral-500">{m.status}</span>
+        <li key={m.id}>
+          <Link
+            href={`/dashboard/moves/${m.id}`}
+            className="flex items-center justify-between rounded-lg border border-surface-border bg-surface-card p-4 shadow-e1 transition-colors hover:bg-neutral-50"
+          >
+            <span className="font-medium text-neutral-900">
+              {m.destinationCity ?? "New move"}
+            </span>
+            <span className="font-mono text-[12px] text-neutral-500">{m.status}</span>
+          </Link>
         </li>
       ))}
     </ul>

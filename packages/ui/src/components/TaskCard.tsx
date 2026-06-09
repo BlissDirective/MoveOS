@@ -22,6 +22,7 @@ export interface TaskCardProps {
   status: TaskStatus;
   /** e.g. "Due in 3 days" or "Overdue by 2 days". */
   dueLabel?: string;
+  onComplete?: () => void;
   onReview?: () => void;
   onSkip?: () => void;
   className?: string;
@@ -47,12 +48,15 @@ export function TaskCard({
   priority,
   status,
   dueLabel,
+  onComplete,
   onReview,
   onSkip,
   className,
 }: TaskCardProps) {
   const reduce = useReducedMotion();
-  const interactive = status === "awaiting_approval" || status === "overdue";
+  const actionable = status !== "completed" && status !== "skipped";
+  const hasActions = Boolean(onComplete || onReview || onSkip);
+  const interactive = actionable && hasActions;
 
   return (
     <motion.div
@@ -111,10 +115,15 @@ export function TaskCard({
         </div>
       </div>
 
-      {interactive && (onReview || onSkip) ? (
+      {interactive ? (
         <div className="flex items-center gap-2 pl-9">
+          {onComplete ? (
+            <Button size="sm" onClick={onComplete}>
+              Mark done
+            </Button>
+          ) : null}
           {onReview ? (
-            <Button size="sm" onClick={onReview}>
+            <Button size="sm" variant={onComplete ? "secondary" : "primary"} onClick={onReview}>
               Review &amp; Approve
             </Button>
           ) : null}
