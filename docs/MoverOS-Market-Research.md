@@ -3,6 +3,15 @@
 
 *Research compiled June 2026 · All statistics sourced from live data*
 
+> **Revision (June 2026):** Numbers corrected after independent verification
+> (see `docs/fable-app-review.md`). Key changes: affiliate conversion
+> assumptions reduced to publicly supportable ranges (planning ARPM **$40–$90**,
+> not $135–$183); mover-side referral fees moved to **$0 in the planning model**
+> pending FMCSA household-goods-broker counsel; competitive section updated for
+> **Move AI** (direct AI-native competitor, pre-seed Oct 2024) and **Updater**
+> (~$453M raised, ~25% of US moves via B2B2C); §14.3 run-rate arithmetic fixed;
+> record-low US mobility (2024) reflected in market-size framing.
+
 ---
 
 ## Table of Contents
@@ -27,7 +36,7 @@
 
 ## 1. Executive Summary
 
-MoverOS targets the **$23.4 billion US moving services industry** by solving a problem that has no software equivalent: coordinating the full operational complexity of a residential move. While moving companies, listing aggregators, and niche tools all exist, **no product manages the entire relocation lifecycle as an intelligent, autonomous co-pilot.**
+MoverOS targets the **$21–23 billion US moving services industry** by solving a problem with little good software: coordinating the full operational complexity of a residential move. Moving companies, listing aggregators, and niche tools all exist, and two players overlap meaningfully — **Updater** (B2B2C, distributed through realtors/property managers) and **Move AI** (early-stage AI moving concierge) — but **no consumer-chosen product manages the entire relocation lifecycle as a transparent, human-approved agent system.** That is the gap MoverOS occupies.
 
 The opportunity is both a product gap and a timing gap. The moving industry is increasingly tech-enabled on the supply side (moving companies use software to dispatch, quote, and track) but **almost entirely unserved on the demand side** — the consumer doing the moving.
 
@@ -35,8 +44,8 @@ The opportunity is both a product gap and a timing gap. The moving industry is i
 
 | Metric | Value |
 |--------|-------|
-| US Moving Industry Revenue (2026) | $23.4 billion |
-| Americans moving annually | ~28–41 million |
+| US Moving Industry Revenue (2026) | $21–23 billion (slow growth, ~3–4% CAGR) |
+| Americans moving annually | ~25–40 million (methodology-dependent); **2024 mobility rate ~11% — lowest since 1948** |
 | Average American lifetime moves | 11.7 times |
 | Average local move cost | $800–$2,500 |
 | Average long-distance move cost | $3,500–$8,500 |
@@ -44,7 +53,7 @@ The opportunity is both a product gap and a timing gap. The moving industry is i
 | Peak moving season (May–Aug) | ~60% of annual volume |
 | Self-storage industry (closely related) | $23.6 billion |
 | Venture funding in moving tech (recent) | $500M+ |
-| Affiliate revenue potential per move | $150–$500+ |
+| Affiliate revenue potential per move | **$15–$35 planning** · $90+ optimized · $150+ only if mover-side fees unlock (post-FMCSA counsel) |
 
 ### The Core Thesis
 Moving generates one of the **highest concentrations of high-value purchase decisions** in a short window — internet service, insurance, storage, cleaning, handyman services, and movers themselves — all within a 60–90 day period. MoverOS sits at the center of that decision moment, making it one of the most defensible affiliate-monetized consumer applications conceivable.
@@ -55,15 +64,14 @@ Moving generates one of the **highest concentrations of high-value purchase deci
 
 ### 2.1 Moving Industry Scale
 
-The US moving services industry reached **$23.4 billion in revenue in 2026**, up from $21.3 billion in 2023, reflecting a CAGR of approximately 2.8% since 2020. The broader global moving services market is projected to grow from $111 billion in 2025 to **$159.67 billion by 2032** at a 5.3% CAGR.
+The US moving services industry generates roughly **$21–23 billion in annual revenue**, with projected growth of only ~3–4% CAGR through 2029. The broader global moving services market is projected to grow from $111 billion in 2025 to **$159.67 billion by 2032** at a 5.3% CAGR.
 
-Despite perceptions of a slowdown, the industry remains robust:
+**Honest framing: the market is large in dollars but shrinking in volume.** The US mobility rate hit **~11% in 2024 — the lowest since tracking began in 1948 — with no rebound in 2025** (Census Bureau, Harvard JCHS). Revenue growth is price-driven, not volume-driven. Still:
 
-- **28–41 million Americans** relocate annually (estimates vary by methodology; the Census Bureau's 2023 figure of 41 million includes all types of residential moves)
-- **7.7 million interstate moves** per year
-- **Over 17,900 moving companies** operating in the US
-- **109,000+ industry employees**
-- Industry revenue grew **8.4% YoY** in 2024 alone
+- **~25–40 million Americans** relocate annually (estimates vary by methodology; ACS-based counts run higher than CPS-based counts)
+- **Millions of interstate moves** per year
+- **~7,700–17,900 moving companies** operating in the US (source-dependent; ~half have fewer than 5 employees — supply is hyper-fragmented, which favors an aggregation layer)
+- Only **~23% of movers hire full-service pros**; ~38% rent a truck, ~24% pure DIY — most booking still happens by contacting companies directly
 
 ### 2.2 Who Is Moving
 
@@ -248,6 +256,19 @@ At a median hourly value of $25–$50 (based on median household income), this r
 
 ### 5.1 Existing Moving-Adjacent Products
 
+#### Updater ⚠️ (the incumbent wall)
+- **Type:** B2B2C moving platform distributed through real estate brokerages, multifamily/property managers, and relocation partners
+- **Revenue model:** Commissions on internet, insurance, moving supplies, and service setup — the exact referral streams MoverOS targets
+- **Funding/traction:** **~$453M raised** (incl. $215M from Vista Credit Partners); claims its technology touches **>25% of US moves**
+- **Weakness:** Consumers don't choose Updater — it arrives via the transaction channel; experience is checklist + offers, not agentic execution; weak consumer brand
+- **Competitive threat to MoverOS:** **High on the B2B2C channel** (RE agent/PM distribution is their home turf), **low on direct consumer agentic UX**
+
+#### Move AI (moveai.com) ⚠️ (closest direct competitor)
+- **Type:** AI moving concierge — price-shops movers behind the scenes and returns competitive quotes; free to the consumer, paid by vendors
+- **Funding/traction:** **$1.4M pre-seed (Oct 2024)**, ex-Apple/MIT founder; pursuing corporate lump-sum relocation pilots
+- **Weakness:** Early stage; vendor-paid model creates a "who does the agent work for?" trust question; mover-quotes only, not full lifecycle
+- **Competitive threat to MoverOS:** **Medium-High** — invalidates any "first/only AI-native mover assistant" positioning; differentiation must come from user-paid alignment, HITL transparency, and full-lifecycle scope
+
 #### HireAHelper
 - **Type:** Labor-only marketplace (connects customers with licensed movers for loading/unloading)
 - **Revenue model:** Lead generation; takes 15–20% commission per booking
@@ -330,9 +351,9 @@ Of the $23.4 billion moving industry, approximately:
 - $15B flows through full-service moving companies (heavily tech-enabled on their side)
 - $5B through DIY/self-move tools (truck rentals, containers)
 - $3B through labor marketplaces
-- **$0** flows through a consumer-side coordination platform
+- Consumer-side coordination is **nascent, not empty**: Updater reaches moves through transaction channels, and Move AI is attacking quote-shopping — but no consumer-chosen, transparent, full-lifecycle agent product has won
 
-The supply side of the moving industry has been digitized. The demand side has not.
+The supply side of the moving industry has been digitized (movers are now deploying their own AI quote/booking agents — MoveCall, Voiceflow-based bots). The consumer side remains the weaker flank.
 
 **Force 3: Gen Z's mobile-native expectation**
 Gen Z remains the most mobile demographic despite broader mobility declines. Their expectation: everything should work like Uber. You tell the app what you need, it handles the execution, you confirm. A moving checklist blog post from 2019 is not acceptable to this cohort. They will pay for a tool that matches their expectations.
@@ -392,43 +413,49 @@ Revenue Stream 3: B2B (recurring)
 
 ### 7.2 Revenue Per Move — Detailed Modeling
 
+*Conversion rates below are planning assumptions grounded in public lead-gen
+and affiliate comps. Mover-side referral fees are excluded ($0) pending FMCSA
+counsel — see §8.2.*
+
 #### Scenario A: Local Move User, Free Plan
 | Stream | Revenue |
 |--------|---------|
 | Direct | $0 |
-| ISP referral (60% conversion) | $81 |
-| Moving company referral (40% conversion) | $24 |
-| Storage rental (15% conversion) | $9 |
-| Renter's insurance (25% conversion) | $8 |
-| Home services bookings (50% conversion) | $12 |
-| **Total per free user** | **~$134** |
+| ISP referral (15% conversion × $80) | $12 |
+| Moving company referral (FMCSA-gated) | $0 |
+| Storage rental (5% conversion) | $1 |
+| Renter's insurance (10% conversion) | $3 |
+| Home services bookings (10–15% conversion) | $2 |
+| **Total per free user** | **~$18** |
 
 #### Scenario B: Long-Distance Move User, Paid Plan ($49)
 | Stream | Revenue |
 |--------|---------|
 | Direct (plan) | $49 |
-| ISP referral (70% conversion; higher stakes move) | $95 |
-| Moving company referral (55% conversion) | $83 |
-| Storage rental (30% conversion) | $24 |
-| Renter's insurance (40% conversion) | $16 |
-| Home services (60% conversion) | $22 |
-| **Total per paid long-distance user** | **~$289** |
+| ISP referral (20% conversion; higher-stakes move) | $18 |
+| Moving company referral (FMCSA-gated) | $0 |
+| Storage rental (10% conversion) | $3 |
+| Renter's insurance (15% conversion) | $7 |
+| Home services (15–20% conversion) | $3 |
+| **Total per paid long-distance user** | **~$80** |
 
 #### Scenario C: RE Agent-Gifted User (Agent pays $59)
 | Stream | Revenue |
 |--------|---------|
 | Agent gifting fee | $59 |
-| ISP referral (65% conversion) | $88 |
-| Moving company referral (50% conversion) | $55 |
-| Storage rental (20% conversion) | $16 |
-| Renter's insurance (35% conversion) | $14 |
-| Home services (55% conversion) | $20 |
-| **Total per agent-gifted user** | **~$252** |
+| ISP referral (18% conversion) | $15 |
+| Moving company referral (FMCSA-gated) | $0 |
+| Storage rental (8% conversion) | $2 |
+| Renter's insurance (12% conversion) | $6 |
+| Home services (15% conversion) | $3 |
+| **Total per agent-gifted user** | **~$85** |
 
 #### Blended Average Revenue Per Move (ARPM)
 Assuming mix: 50% free, 35% paid, 15% agent-gifted:
 
-**Blended ARPM: ~$183**
+**Blended ARPM (planning): ~$50** · range **$40 (conservative) – $90 (optimized
+conversions + higher paid mix)**. The previous $183 figure required 60–75%
+affiliate conversions and mover-side fees; keep it only as an upside scenario.
 
 ---
 
@@ -446,8 +473,8 @@ Assuming mix: 50% free, 35% paid, 15% agent-gifted:
 **MoverOS ISP conversion model:**
 - Users moving to a new address 100% need internet
 - 78% of movers must set up new internet service (22% transfer same provider)
-- Expected conversion rate through InternetAgent recommendation: 60–75%
-- At 65% conversion, $80 average payout → **$52 per move in ISP affiliate revenue**
+- Planning conversion rate through InternetAgent recommendation: **10–25%** (no public comp supports higher; the previous 60–75% assumption was unsupported — treat anything above 25% as an optimization target to be earned, not assumed)
+- At 15–20% conversion, $80 average payout → **$12–$16 per move in ISP affiliate revenue (planning); $50+ only at optimized conversion**
 
 **ISP-specific strategy:** SmartyStreets integration identifies available ISPs at the exact destination address, eliminating "out of service area" dead ends that kill conversions. Showing price/speed comparison before asking for a click dramatically improves conversion vs. generic affiliate links.
 
@@ -467,7 +494,9 @@ Assuming mix: 50% free, 35% paid, 15% agent-gifted:
 - Expected booking conversion from QuoteAgent recommendations: 30–40%
 - **Revenue per move: $35–$117 (pay-per-lead vs. pay-per-booking)**
 
-**Better model:** Negotiate pay-per-booking with top 2–3 moving company partners; use pay-per-lead for remainder. At 35% conversion × $80 blended = **$28 per move in mover affiliate revenue**.
+**⚠️ FMCSA gate — mover-side fees are $0 in the planning model.** Under 49 CFR Part 371 (and FMCSA's June 2023 guidance), soliciting/negotiating interstate household-goods transportation **for compensation** plausibly makes MoverOS a regulated household-goods broker (MC registration, surety bond, survey-based-estimate rules; penalties can reach $10k/day/violation). Until transportation counsel clears a structure (or MoverOS registers as a broker deliberately), **do not sign mover-side fee agreements**. Consumer-paid quote assistance and unregulated referral categories (ISP, utilities, insurance, storage, home services) carry no such exposure.
+
+**Upside if unlocked post-counsel:** pay-per-lead at realistic 10–20% conversion × $35 ≈ $4–$7/move; pay-per-booking blended ≈ $28/move. **Planning model: $0.**
 
 ### 8.3 Storage Unit Referral Economics
 
@@ -480,9 +509,9 @@ Assuming mix: 50% free, 35% paid, 15% agent-gifted:
 **MoverOS storage model:**
 - 11% of all households rent a storage unit
 - At move time, the % is much higher — estimated 20–30% of movers need temporary storage
-- Expected conversion: 20–25% of all users shown storage options
+- Planning conversion: 5–10% of all users shown storage options
 - Average payout: $25 per rental
-- **Revenue per move: $5–$6**
+- **Revenue per move: $1–$3 (planning)**
 
 ### 8.4 Insurance Referral Economics
 
@@ -498,9 +527,9 @@ Assuming mix: 50% free, 35% paid, 15% agent-gifted:
 **MoverOS insurance model:**
 - Renters moving into rental = renter's insurance (required by most landlords)
 - Buyers closing on a home = homeowner's insurance (required by mortgage lender)
-- Expected conversion: 30–40% of relevant users
+- Planning conversion: 10–15% of relevant users
 - Average payout: ~$30 renter's, ~$100 homeowner's
-- Mix-weighted average: ~$45 per conversion × 33% conversion = **$15 per move**
+- Mix-weighted average: ~$45 per conversion × 12% conversion = **$4–$7 per move (planning)**
 
 ### 8.5 Home Services Referral Economics
 
@@ -515,22 +544,22 @@ Assuming mix: 50% free, 35% paid, 15% agent-gifted:
 - Junk removal: 25% of movers
 - Handyman: 30% of movers at destination
 - Average affiliate payout per booking: $15
-- Average 1.8 services booked per move × 35% conversion × $15 = **$9 per move**
+- Average 1.2 services booked per move × 10–20% conversion × $15 = **$2–$4 per move (planning)**
 
 ### 8.6 Total Affiliate Revenue Summary
 
-| Stream | Revenue Per Move |
-|--------|-----------------|
-| ISP referral | $52 |
-| Moving company referral | $28 |
-| Storage unit | $6 |
-| Insurance | $15 |
-| Home services | $9 |
-| **Total affiliate per move** | **$110** |
+| Stream | Planning | Optimized upside |
+|--------|---------|------------------|
+| ISP referral | $13 | $50+ |
+| Moving company referral | **$0 (FMCSA-gated)** | $28 (post-counsel) |
+| Storage unit | $2 | $6 |
+| Insurance | $5 | $15 |
+| Home services | $3 | $9 |
+| **Total affiliate per move** | **~$23** | **~$110** |
 
 Add direct revenue (blended $25 across plans):
 
-**Total ARPM: ~$135 (conservative) to $183 (base case) to $250+ (optimized)**
+**Total ARPM: ~$48 planning · $40 conservative · $90 optimized · $135–$183 only if every conversion assumption is hit AND mover-side fees unlock — treat that as a stretch case, never a plan input**
 
 ---
 
@@ -844,11 +873,11 @@ The CALS is a composite score assessing how likely MoverOS is to acquire custome
 | Search intent quality (users in buying mode) | 9.5 | 20% | 1.90 | "Moving to [city] checklist" = ultra-high intent |
 | Viral/word-of-mouth potential | 8.0 | 15% | 1.20 | Movers tell everyone they're moving; social moment |
 | CAC efficiency (organic-weighted) | 8.5 | 15% | 1.28 | SEO + viral report = very low CAC pathway |
-| Competitive gap (how easy to win vs. incumbents) | 9.0 | 15% | 1.35 | No direct AI-native competitor in the space |
+| Competitive gap (how easy to win vs. incumbents) | 7.0 | 15% | 1.05 | Move AI is a direct AI-native competitor (early); Updater owns the B2B2C channel — winnable, not empty |
 | Conversion pathway clarity | 8.8 | 10% | 0.88 | Clear "I have a move" trigger moment |
 | Paid channel viability | 7.0 | 5% | 0.35 | Higher CAC via paid; manageable with affiliate ROAS |
 
-**Customer Acquisition Likelihood Score: 8.8 / 10**
+**Customer Acquisition Likelihood Score: 8.5 / 10**
 
 *Interpretation: Very high acquisition likelihood. Organic channels (SEO, community, viral report) provide extremely low-cost user acquisition. The life-event trigger ("I'm moving") is one of the cleanest acquisition signals in consumer software.*
 
@@ -865,13 +894,14 @@ The CALS is a composite score assessing how likely MoverOS is to acquire custome
 
 **MoverOS is episodic, not habitual** — the product must extract maximum value and create maximum referral intent within the 90-day move window. This is by design, not a flaw. The monetization model supports this: one move = $135–$250+ in revenue.
 
-The LTV equation:
-- Single move: $183 ARPM
+The LTV equation (planning ARPM):
+- Single move: ~$50 ARPM (planning; $90 optimized)
 - Average person moves 11.7 times in their lifetime
 - If MoverOS captures 25% of lifetime moves: 2.9 additional uses
-- Lifetime direct revenue: ~$530
-- Referral value (if 0.5 people referred per user who move): additional $92
-- **True user LTV: ~$620+**
+- Lifetime direct revenue: ~$145 (planning) to ~$260 (optimized)
+- Referral value (if 0.5 people referred per user who move): additional ~$25–$45
+- **True user LTV: ~$170–$300** (the previous $620+ figure depended on the unvalidated $183 ARPM)
+- **Implication:** single-transaction economics cannot support heavy paid CAC — organic, B2B2C, and referral channels must carry acquisition; a post-move "home services annuity" (annual insurance/ISP re-shopping) is the main lever to raise LTV structurally
 
 ---
 
@@ -883,10 +913,10 @@ The App Niche Score evaluates MoverOS across 10 dimensions critical to app succe
 
 | Dimension | Score | Rationale |
 |-----------|-------|-----------|
-| **1. Market Size** | 9.5/10 | $23.4B industry; 28–41M annual movers; enormous TAM |
+| **1. Market Size** | 8.5/10 | $21–23B industry in dollars, but volume shrinking (2024 mobility at a 76-year low) |
 | **2. Problem Severity** | 9.0/10 | Moving is consistently rated among the most stressful life events; clear pain, not manufactured need |
-| **3. Competition Density** | 8.5/10 | No direct AI-native competitor; existing tools are fragmented, single-task, or manual |
-| **4. Monetization Depth** | 9.5/10 | Rare multi-stream architecture: direct + ISP affiliate + mover affiliate + storage + insurance + home services |
+| **3. Competition Density** | 6.5/10 | Move AI is a funded direct AI-native competitor (early); Updater dominates B2B2C distribution; consumer agentic UX still open |
+| **4. Monetization Depth** | 8.0/10 | Multi-stream architecture: direct + ISP/utility + storage + insurance + home services; mover-side fees FMCSA-gated |
 | **5. Timing / Market Readiness** | 9.0/10 | AI agents now production-viable; Gen Z expects autonomous tools; Porch concierge model is proven but manual |
 | **6. Development Feasibility** | 8.0/10 | PWA + Inngest + Claude API makes this buildable solo in 8 weeks; complexity is manageable |
 | **7. Viral / Referral Mechanics** | 8.5/10 | Move = social event; instant report is inherently shareable; RE agent gifting creates structural virality |
@@ -894,11 +924,11 @@ The App Niche Score evaluates MoverOS across 10 dimensions critical to app succe
 | **9. B2B Extension Potential** | 8.5/10 | RE agents, property managers, and corporate HR all represent natural expansion channels |
 | **10. Defensibility / Moat** | 7.5/10 | Affiliate network, integration stack, and longitudinal move data create meaningful moats; not impenetrable but solid |
 
-**Raw Average: 8.7 / 10**
+**Raw Average: 8.3 / 10**
 
-**Weighted App Niche Score: 8.7 / 10**
+**Weighted App Niche Score: 8.3 / 10**
 
-*Rating: EXCEPTIONAL — Top 5% of consumer app opportunities*
+*Rating: EXCEPTIONAL band (8.0–8.9) — strong opportunity, with competition and regulatory constraints now priced in*
 
 ### 13.2 Niche Score Interpretation
 
@@ -910,7 +940,7 @@ The App Niche Score evaluates MoverOS across 10 dimensions critical to app succe
 | 6.0–6.9 | Solid | Build only with unique founder advantage |
 | <6.0 | Marginal | Validate further before committing |
 
-**MoverOS at 8.7 represents one of the cleanest consumer app opportunities in the current market.** The combination of enormous market size, near-zero direct competition, multi-stream monetization, and low-friction organic acquisition is rare.
+**MoverOS at 8.3 remains a strong consumer app opportunity.** The combination of a large-dollar market, early-stage direct competition, multi-stream monetization, and low-friction organic acquisition is still rare — but the edge comes from execution (trust, HITL transparency, full lifecycle) rather than from an empty field.
 
 ---
 
@@ -920,16 +950,20 @@ The App Niche Score evaluates MoverOS across 10 dimensions critical to app succe
 
 | Month | Active Moves | ARPM | Monthly Revenue | Cumulative |
 |-------|-------------|------|----------------|------------|
-| 1 | 50 | $60 | $3,000 | $3,000 |
-| 2 | 120 | $75 | $9,000 | $12,000 |
-| 3 | 250 | $90 | $22,500 | $34,500 |
-| 6 | 800 | $120 | $96,000 | $220,000 |
-| 9 | 2,000 | $140 | $280,000 | $650,000 |
-| 12 | 4,000 | $150 | $600,000 | $1.7M |
-| 18 | 8,000 | $160 | $1.28M | $4.5M |
-| 24 | 15,000 | $170 | $2.55M | $10.5M |
+| 1 | 50 | $40 | $2,000 | $2,000 |
+| 2 | 120 | $42 | $5,000 | $7,000 |
+| 3 | 250 | $45 | $11,300 | $18,300 |
+| 6 | 800 | $55 | $44,000 | ~$110,000 |
+| 9 | 2,000 | $60 | $120,000 | ~$310,000 |
+| 12 | 4,000 | $65 | $260,000 | ~$800,000 |
+| 18 | 8,000 | $75 | $600,000 | ~$2.2M |
+| 24 | 15,000 | $85 | $1.28M | ~$5.5M |
 
-*Notes: ARPM increases as affiliate partnerships mature and conversion rates optimize. Assumes aggressive but realistic SEO growth and RE agent channel activation.*
+*Notes: ARPM ramps from planning ($40–$50) toward optimized ($85–$90) as
+affiliate partnerships mature and conversion is measured and tuned. Move-volume
+growth is the aspirational variable here (it assumes SEO + RE-agent channels
+compound on schedule); treat months 9+ as a goal, not a forecast. If mover-side
+fees unlock post-FMCSA-counsel, add roughly $25–$30 to mature ARPM.*
 
 ### 14.2 Cost Structure
 
@@ -952,17 +986,19 @@ The App Niche Score evaluates MoverOS across 10 dimensions critical to app succe
 
 ### 14.3 Break-Even Analysis
 
+*At planning ARPM of ~$50/move:*
+
 | Scenario | Moves/Month Needed | Monthly Revenue |
 |----------|--------------------|----------------|
-| Cover hosting + tools ($500/mo) | 4 | $600 |
-| Cover founder salary ($8,000/mo) | 59 | $8,000 |
-| Cover $20K/mo (team of 2) | 148 | $20,000 |
-| **$100K MRR** | **666** | **$100,000** |
+| Cover hosting + tools ($500/mo) | 10 | $500 |
+| Cover founder salary ($8,000/mo) | 160 | $8,000 |
+| Cover $20K/mo (team of 2) | 400 | $20,000 |
+| **$100K/month** | **2,000** | **$100,000** |
 
-**At $100K MRR equivalent (666 active moves/month), MoverOS is generating:**
-- $30M+ annual revenue run rate
-- 95%+ gross margins
-- CAC payback in under 1 move event
+**At $100K/month (2,000 active moves/month), MoverOS is generating:**
+- **$1.2M annual revenue run rate** (the previous "$30M+ run rate" figure was an arithmetic error — $100K/month annualizes to $1.2M)
+- 95%+ gross margins (infrastructure cost per move is ~$0.60–$0.95)
+- CAC payback within the first move event on organic/B2B2C channels; paid channels must be measured against ~$50 ARPM, not $183
 
 ---
 
@@ -972,6 +1008,10 @@ The App Niche Score evaluates MoverOS across 10 dimensions critical to app succe
 
 | Risk | Probability | Impact | Mitigation |
 |------|-------------|--------|-----------|
+| **FMCSA household-goods broker classification** (taking mover-side fees while soliciting/negotiating interstate moves) | Medium–High if mover fees taken | **Very High** ($10k/day/violation exposure; HHG enforcement active) | **$0 mover-side fees in planning model**; monetize ISP/utility/insurance referrals + consumer-paid pass instead; engage transportation counsel before any mover-fee agreement; registering as a broker is a deliberate later option |
+| **Email deliverability / sender reputation** (Gmail/Yahoo bulk-sender rules, tightened 2024–2025) | Low–Medium | Medium | Send quote requests from the **user's own OAuth'd mailbox** (current Nylas design), low volume, genuinely solicited; keep platform-domain mail strictly transactional with SPF/DKIM/DMARC |
+| **Mover reply unpredictability** (calls, PDFs, "need a survey" instead of clean quotes) | High | Medium | Treat `needs_survey` / `call_requested` / `attachment_quote` as first-class reply intents; HITL inbox absorbs ambiguity; never promise "guaranteed quotes" |
+| **Generic AI agents commoditize email outreach** (ChatGPT Agent-class products) | Medium | Medium | Defensibility = structured quote data, provider relationships, full move lifecycle, and trust/HITL UX — not the email-sending act |
 | **Affiliate program changes** (ISPs pull programs) | Medium | High | Diversify across 5+ ISP programs; never rely on single provider; negotiate direct deals as volume grows |
 | **Google algorithm update** (kills SEO) | Medium | Medium | Multi-channel approach; don't over-rely on SEO in early months; build email list from Day 1 |
 | **Porch builds AI-native product** | Low–Medium | High | Speed to market is the defense; 6-month head start is significant in consumer apps |
@@ -985,15 +1025,26 @@ The App Niche Score evaluates MoverOS across 10 dimensions critical to app succe
 ### 15.2 Existential Risk Assessment
 
 **What would kill this business:**
-1. A major tech company (Google, Amazon, Apple) launching a moving assistant as part of Google Maps, Alexa, or iOS (low probability in 12-18 month window; large companies move slowly in niche verticals)
-2. A well-funded competitor raising $10M and outspending on SEO and paid acquisition (mitigated by: first-mover in affiliate network + deep integration moat)
-3. ISP affiliate programs broadly reducing commission rates (mitigated by: multiple revenue streams; direct subscription revenue provides floor)
+1. **FMCSA enforcement action** if mover-side fees are taken without broker registration (mitigated by: $0 mover fees in planning model; counsel before any mover-fee deal)
+2. A major tech company (Google, Amazon, Apple) launching a moving assistant as part of Google Maps, Alexa, or iOS (low probability in 12-18 month window; large companies move slowly in niche verticals)
+3. A well-funded competitor out-executing: **Updater** pushing downstream into consumer agentic UX, or **Move AI** raising a real round (mitigated by: speed, full-lifecycle scope, user-paid trust positioning)
+4. ISP affiliate programs broadly reducing commission rates (mitigated by: multiple revenue streams; direct one-time-pass revenue provides floor)
 
 **Verdict:** No existential risks in the 18-month window are unmitigatable. The core business model is resilient.
 
 ---
 
 ## 16. Strategic Recommendations
+
+### 16.0 Priority Zero: Monetization Order (post-FMCSA review)
+
+Monetize in this order: **(1) one-time consumer move pass ($29–$79), (2)
+ISP/utility/insurance/storage/home-services referrals (unregulated, proven
+vendor-paid model — the Updater/Utility Concierge playbook), (3) mover-side
+lead/booking fees only after transportation counsel clears a structure or
+MoverOS registers as a household-goods broker.** The quote agent stays a
+flagship *product* feature (consumer-paid) regardless — only the mover-side
+*fee* is gated.
 
 ### 16.1 Three-Priority Immediate Actions (Before Building)
 
@@ -1026,8 +1077,8 @@ Find one real estate agent in your network or community, give them free access, 
 
 This represents:
 - ~0.2% of the annual US moving market (conservative capture)
-- $750,000/month in blended revenue
+- ~$325,000/month in blended revenue at planning-to-mid ARPM (~$65); ~$450K/month if conversions optimize
 - A case study of $15M+ in "moves managed" with documented savings
-- A clear path to $10M ARR and meaningful acquisition interest
+- A credible path toward $5M+ ARR and meaningful acquisition interest (faster if mover-side fees unlock post-counsel)
 
 The combination of airtight multi-stream monetization, high organic acquisition potential, and a genuinely underserved market makes **MoverOS one of the most defensible and high-upside consumer app opportunities available to a solo founder in 2026.**
