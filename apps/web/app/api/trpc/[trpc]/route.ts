@@ -16,6 +16,9 @@ const events: AppEvents = {
   async quotesRequested(data) {
     await inngest.send({ name: "quote/requested", data });
   },
+  async internetRequested(data) {
+    await inngest.send({ name: "internet/requested", data });
+  },
 };
 
 // The tRPC HTTP endpoint. Context resolves the Supabase user from the request

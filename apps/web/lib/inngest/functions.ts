@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import {
   getDb,
   agentTasks,
@@ -7,19 +7,46 @@ import {
   moves,
   tasks,
   userProfiles,
+  type Database,
+  type Move,
 } from "@moveros/db";
 import { sendEmail } from "../nylas/send";
+import { AFFILIATE_OFFERS, offersByCategory } from "../affiliate/offers";
 import {
   inngest,
   replyParseAgent,
   runAgent,
   timelineAgent,
   quoteAgent,
+  internetAgent,
   type ReplyParseInput,
   type TimelineInput,
   type TimelineTask,
   type QuoteInput,
+  type InternetInput,
+  type InternetRecommendation,
 } from "@moveros/agents";
+
+/**
+ * Ownership assertion for event-driven code paths. Inngest functions run on
+ * the unscoped service-role client, and (since the Nylas webhook) not every
+ * event producer is an ownership-checked tRPC mutation — so every function
+ * re-verifies that the event's moveId belongs to the event's userId before
+ * reading or writing anything.
+ */
+async function requireMoveOwned(
+  db: Database,
+  moveId: string,
+  userId: string,
+): Promise<Move> {
+  const [row] = await db
+    .select()
+    .from(moves)
+    .where(and(eq(moves.id, moveId), eq(moves.userId, userId)))
+    .limit(1);
+  if (!row) throw new Error(`move ${moveId} not owned by event user`);
+  return row;
+}
 
 type TimelineOutcome = {
   ok: boolean;
@@ -58,10 +85,11 @@ export const parseEmailReply = inngest.createFunction(
   { id: "parse-email-reply", retries: 2 },
   { event: "email/reply.received" },
   async ({ event, step }) => {
-    const { moveId, threadId, body } = event.data;
+    const { moveId, userId, threadId, subject, from, body } = event.data;
     const db = getDb();
 
     const agentTaskId = await step.run("create-agent-task", async () => {
+      await requireMoveOwned(db, moveId, userId);
       const [row] = await db
         .insert(agentTasks)
         .values({
@@ -69,7 +97,7 @@ export const parseEmailReply = inngest.createFunction(
           agentType: "reply_parse",
           status: "running",
           startedAt: new Date(),
-          inputData: { threadId },
+          inputData: { threadId, from },
         })
         .returning({ id: agentTasks.id });
       if (!row) throw new Error("failed to create agent_tasks row");
@@ -79,9 +107,11 @@ export const parseEmailReply = inngest.createFunction(
     const outcome = await step.run("run-reply-parse", async () => {
       const client = new Anthropic();
       const input: ReplyParseInput = {
-        vendorType: "other",
-        subject: "(email reply)",
-        body,
+        // Today every thread MoverOS initiates is mover outreach; revisit when
+        // other vendor outreach lands (derive from the matched approval item).
+        vendorType: "mover",
+        subject: subject || "(email reply)",
+        body: body.slice(0, 20_000),
       };
       const result = await runAgent(replyParseAgent, input, { client });
       return result.ok
@@ -124,9 +154,10 @@ export const parseEmailReply = inngest.createFunction(
           moveId,
           agentTaskId,
           agentType: "reply_parse",
-          title: "Vendor reply parsed",
+          title: from ? `Reply from ${from}` : "Vendor reply parsed",
           body: outcome.output.summary,
-          outputData: outcome.output,
+          outputData: { ...outcome.output, threadId, from },
+          emailThreadId: threadId,
           priority: "medium",
         });
       } else {
@@ -154,14 +185,12 @@ export const generateTimeline = inngest.createFunction(
   { id: "generate-timeline", retries: 2 },
   { event: "move/created" },
   async ({ event, step }) => {
-    const { moveId } = event.data;
+    const { moveId, userId } = event.data;
     const db = getDb();
 
-    const move = await step.run("load-move", async () => {
-      const [row] = await db.select().from(moves).where(eq(moves.id, moveId)).limit(1);
-      if (!row) throw new Error(`move ${moveId} not found`);
-      return row;
-    });
+    const move = await step.run("load-move", () =>
+      requireMoveOwned(db, moveId, userId),
+    );
 
     const agentTaskId = await step.run("create-agent-task", async () => {
       const [row] = await db
@@ -270,29 +299,48 @@ export const dispatchApprovedAction = inngest.createFunction(
   { id: "dispatch-approved-action", retries: 2 },
   { event: "approval/approved" },
   async ({ event, step }) => {
-    const { approvalId } = event.data;
+    const { approvalId, moveId, userId } = event.data;
     const db = getDb();
 
     const approval = await step.run("load-approval", async () => {
+      await requireMoveOwned(db, moveId, userId);
       const [row] = await db
         .select()
         .from(approvalItems)
-        .where(eq(approvalItems.id, approvalId))
+        .where(and(eq(approvalItems.id, approvalId), eq(approvalItems.moveId, moveId)))
         .limit(1);
       if (!row) throw new Error(`approval ${approvalId} not found`);
       return row;
     });
 
+    // Only user-approved items act in the world — never a still-pending or
+    // rejected one, no matter what the event says.
+    if (approval.status !== "approved" && approval.status !== "edited_approved") {
+      return { sent: false, reason: `status is ${approval.status}` };
+    }
     if (!approval.requiresEmailSend || approval.emailSentAt || !approval.emailTo) {
       return { sent: false, reason: "no email to send" };
+    }
+
+    // Atomically claim the send (emailSentAt doubles as the claim flag) so a
+    // double-fired event can't double-send: at-most-once for the side effect.
+    const claimed = await step.run("claim-send", async () => {
+      const [row] = await db
+        .update(approvalItems)
+        .set({ emailSentAt: new Date(), updatedAt: new Date() })
+        .where(and(eq(approvalItems.id, approvalId), isNull(approvalItems.emailSentAt)))
+        .returning({ id: approvalItems.id });
+      return Boolean(row);
+    });
+    if (!claimed) {
+      return { sent: false, reason: "already claimed/sent" };
     }
 
     const sent = await step.run("send-email", async () => {
       const [profile] = await db
         .select({ grantId: userProfiles.nylasGrantId })
         .from(userProfiles)
-        .innerJoin(moves, eq(moves.userId, userProfiles.id))
-        .where(eq(moves.id, approval.moveId))
+        .where(eq(userProfiles.id, userId))
         .limit(1);
       return sendEmail({
         grantId: profile?.grantId ?? null,
@@ -302,14 +350,156 @@ export const dispatchApprovedAction = inngest.createFunction(
       });
     });
 
-    await step.run("record-sent", async () => {
+    await step.run("record-thread", async () => {
       await db
         .update(approvalItems)
-        .set({ emailSentAt: new Date(), emailThreadId: sent.threadId, updatedAt: new Date() })
+        .set({ emailThreadId: sent.threadId, updatedAt: new Date() })
         .where(eq(approvalItems.id, approvalId));
     });
 
     return { sent: true, simulated: sent.simulated, threadId: sent.threadId };
+  },
+);
+
+type InternetOutcome = {
+  ok: boolean;
+  summary: string;
+  recommendations: InternetRecommendation[];
+  model: string;
+  inputTokens: number;
+  outputTokens: number;
+  costUsd: number;
+  error: string | null;
+};
+
+/**
+ * recommend-internet — the first referral-bearing agent loop (review §7.3:
+ * monetize ISP/utility/insurance referrals first; mover-side fees are
+ * FMCSA-gated). Ranks the ISP candidates from the offers catalog for this
+ * move's destination and drops the picks into the approval inbox; the
+ * affiliate click only happens if the user follows a link from the card.
+ *
+ * Candidates come from the static catalog today — swap in the SmartyStreets
+ * address-level availability lookup when that integration lands.
+ */
+export const recommendInternet = inngest.createFunction(
+  { id: "recommend-internet", retries: 2 },
+  { event: "internet/requested" },
+  async ({ event, step }) => {
+    const { moveId, userId } = event.data;
+    const db = getDb();
+
+    const move = await step.run("load-move", () =>
+      requireMoveOwned(db, moveId, userId),
+    );
+
+    const agentTaskId = await step.run("create-agent-task", async () => {
+      const [row] = await db
+        .insert(agentTasks)
+        .values({ moveId, agentType: "internet", status: "running", startedAt: new Date() })
+        .returning({ id: agentTasks.id });
+      if (!row) throw new Error("failed to create agent_tasks row");
+      return row.id;
+    });
+
+    const outcome = await step.run("run-internet", async (): Promise<InternetOutcome> => {
+      const client = new Anthropic();
+      const candidates = offersByCategory("isp")
+        .filter((o) => o.isp)
+        .map((o) => ({
+          offerId: o.id,
+          provider: o.provider,
+          technology: o.isp!.technology,
+          typicalDownloadMbps: o.isp!.typicalDownloadMbps,
+          typicalMonthlyUsd: o.isp!.typicalMonthlyUsd,
+          notes: o.isp!.notes,
+        }));
+      const input: InternetInput = {
+        destinationCity: move.destinationCity ?? "",
+        destinationState: move.destinationState ?? "",
+        destinationZip: move.destinationZip ?? null,
+        homeSize: move.homeSize,
+        candidates,
+      };
+      const result = await runAgent(internetAgent, input, { client });
+      if (!result.ok) {
+        return {
+          ok: false,
+          summary: "",
+          recommendations: [],
+          model: internetAgent.model,
+          inputTokens: 0,
+          outputTokens: 0,
+          costUsd: 0,
+          error: result.error,
+        };
+      }
+      // No-fabrication gate: only recommendations whose offerId exists in the
+      // catalog survive (the agent can't invent a provider we'd then link to).
+      const recommendations = result.output.recommendations.filter(
+        (r) => AFFILIATE_OFFERS[r.offerId]?.category === "isp",
+      );
+      return recommendations.length > 0
+        ? {
+            ok: true,
+            summary: result.output.summary,
+            recommendations,
+            model: internetAgent.model,
+            inputTokens: result.usage.inputTokens,
+            outputTokens: result.usage.outputTokens,
+            costUsd: result.costUsd,
+            error: null,
+          }
+        : {
+            ok: false,
+            summary: "",
+            recommendations: [],
+            model: internetAgent.model,
+            inputTokens: result.usage.inputTokens,
+            outputTokens: result.usage.outputTokens,
+            costUsd: result.costUsd,
+            error: "all recommendations referenced unknown offers",
+          };
+    });
+
+    await step.run("persist", async () => {
+      if (!outcome.ok) {
+        await db
+          .update(agentTasks)
+          .set({ status: "failed", failedAt: new Date(), errorMessage: outcome.error })
+          .where(eq(agentTasks.id, agentTaskId));
+        return;
+      }
+
+      const topPick = outcome.recommendations[0]!;
+      await db.insert(approvalItems).values({
+        moveId,
+        agentTaskId,
+        agentType: "internet",
+        status: "awaiting_approval",
+        priority: "medium",
+        title: "Internet options at your new place",
+        body: outcome.summary,
+        outputData: { recommendations: outcome.recommendations },
+        affiliateType: "isp",
+        affiliatePickId: topPick.offerId,
+      });
+
+      await db
+        .update(agentTasks)
+        .set({
+          status: "awaiting_approval",
+          completedAt: new Date(),
+          outputData: { recommendations: outcome.recommendations },
+          llmModel: outcome.model,
+          inputTokens: outcome.inputTokens,
+          outputTokens: outcome.outputTokens,
+          estimatedCostUsd: outcome.costUsd.toFixed(6),
+        })
+        .where(eq(agentTasks.id, agentTaskId));
+    });
+
+    return { agentTaskId, ok: outcome.ok };
   },
 );
 
@@ -334,14 +524,12 @@ export const requestQuotes = inngest.createFunction(
   { id: "request-quotes", retries: 2 },
   { event: "quote/requested" },
   async ({ event, step }) => {
-    const { moveId } = event.data;
+    const { moveId, userId } = event.data;
     const db = getDb();
 
-    const move = await step.run("load-move", async () => {
-      const [row] = await db.select().from(moves).where(eq(moves.id, moveId)).limit(1);
-      if (!row) throw new Error(`move ${moveId} not found`);
-      return row;
-    });
+    const move = await step.run("load-move", () =>
+      requireMoveOwned(db, moveId, userId),
+    );
 
     const agentTaskId = await step.run("create-agent-task", async () => {
       const [row] = await db

@@ -28,3 +28,16 @@ export type {
 } from "./defs/timeline";
 export { quoteAgent, quoteInput, quoteOutput } from "./defs/quote";
 export type { QuoteInput, QuoteOutput } from "./defs/quote";
+export {
+  internetAgent,
+  internetInput,
+  internetOutput,
+  internetRecommendation,
+  ispCandidate,
+} from "./defs/internet";
+export type {
+  InternetInput,
+  InternetOutput,
+  InternetRecommendation,
+  IspCandidate,
+} from "./defs/internet";

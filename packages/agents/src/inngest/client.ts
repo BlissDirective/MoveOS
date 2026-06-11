@@ -38,10 +38,20 @@ export type MoverOsEvents = {
       userId: string;
     };
   };
+  "internet/requested": {
+    data: {
+      moveId: string;
+      userId: string;
+    };
+  };
   "email/reply.received": {
     data: {
       moveId: string;
+      /** Owner of the move — functions re-verify ownership before writing. */
+      userId: string;
       threadId: string;
+      subject: string;
+      from: string;
       body: string;
     };
   };

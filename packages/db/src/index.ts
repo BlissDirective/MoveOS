@@ -11,4 +11,8 @@ export * from "./schema";
 export { createDb, getDb } from "./client";
 export type { Database } from "./client";
 export { scopedDb, NotOwnedError } from "./scoped";
-export type { ScopedDb, CreateMoveInput } from "./scoped";
+export type {
+  ScopedDb,
+  CreateMoveInput,
+  RecordAffiliateClickInput,
+} from "./scoped";

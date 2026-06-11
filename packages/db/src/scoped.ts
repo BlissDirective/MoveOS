@@ -1,7 +1,24 @@
 import { and, eq, desc, sql } from "drizzle-orm";
 import type { Database } from "./client";
-import { moves, tasks, agentTasks, approvalItems, userProfiles } from "./schema";
-import type { NewMove } from "./schema";
+import {
+  moves,
+  tasks,
+  agentTasks,
+  approvalItems,
+  userProfiles,
+  affiliateEvents,
+} from "./schema";
+import type { NewMove, NewAffiliateEvent } from "./schema";
+
+/**
+ * Fields a caller supplies when recording an affiliate click (userId injected).
+ * `id` may be supplied so the caller can embed it in the destination URL as
+ * the network subId before inserting.
+ */
+export type RecordAffiliateClickInput = Omit<
+  NewAffiliateEvent,
+  "userId" | "clickedAt" | "convertedAt" | "commissionUsd" | "conversionRef"
+>;
 
 /** Fields a caller supplies when creating a move (userId is injected by scope). */
 export type CreateMoveInput = Omit<
@@ -244,6 +261,39 @@ export function scopedDb(db: Database, userId: string) {
           .where(eq(approvalItems.id, approvalId))
           .returning();
         return updated!;
+      },
+    },
+
+    affiliate: {
+      /**
+       * Record an outbound affiliate click. Ownership of the referenced move /
+       * approval is verified before the insert; the returned row's id is the
+       * network subId used for conversion attribution.
+       */
+      async recordClick(input: RecordAffiliateClickInput) {
+        if (input.moveId) await requireMove(input.moveId);
+        if (input.approvalItemId) {
+          await requireApproval(input.approvalItemId);
+          await db
+            .update(approvalItems)
+            .set({ affiliateClicked: true, updatedAt: new Date() })
+            .where(eq(approvalItems.id, input.approvalItemId));
+        }
+        const [row] = await db
+          .insert(affiliateEvents)
+          .values({ ...input, userId })
+          .returning();
+        if (!row) throw new Error("failed to insert affiliate event");
+        return row;
+      },
+
+      /** This user's affiliate clicks, newest first (for a future earnings view). */
+      list() {
+        return db
+          .select()
+          .from(affiliateEvents)
+          .where(eq(affiliateEvents.userId, userId))
+          .orderBy(desc(affiliateEvents.clickedAt));
       },
     },
   };

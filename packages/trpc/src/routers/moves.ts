@@ -54,6 +54,18 @@ export const movesRouter = router({
       return { ok: true };
     }),
 
+  /** Kick the internet agent to rank ISP options at the destination. */
+  requestInternet: protectedProcedure
+    .input(moveId)
+    .mutation(async ({ ctx, input }) => {
+      await ctx.scoped.requireMove(input.moveId); // ownership check
+      await ctx.events.internetRequested({
+        moveId: input.moveId,
+        userId: ctx.userId,
+      });
+      return { ok: true };
+    }),
+
   tasks: protectedProcedure
     .input(moveId)
     .query(({ ctx, input }) => ctx.scoped.tasks.listForMove(input.moveId)),

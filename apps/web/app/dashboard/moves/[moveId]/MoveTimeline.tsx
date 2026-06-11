@@ -18,6 +18,9 @@ export function MoveTimeline({ moveId }: { moveId: string }) {
   const requestQuotes = trpc.moves.requestQuotes.useMutation({
     onSuccess: () => utils.approvals.listPending.invalidate(),
   });
+  const requestInternet = trpc.moves.requestInternet.useMutation({
+    onSuccess: () => utils.approvals.listPending.invalidate(),
+  });
 
   if (move.error) {
     return <p className="text-[15px] text-error">{move.error.message}</p>;
@@ -38,18 +41,29 @@ export function MoveTimeline({ moveId }: { moveId: string }) {
               : "Your move"}
           </h1>
           <div className="flex flex-col items-center gap-1">
-            <Button
-              size="sm"
-              variant="secondary"
-              isLoading={requestQuotes.isPending}
-              disabled={requestQuotes.isSuccess}
-              onClick={() => requestQuotes.mutate({ moveId })}
-            >
-              Get moving quotes
-            </Button>
-            {requestQuotes.isSuccess ? (
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              <Button
+                size="sm"
+                variant="secondary"
+                isLoading={requestQuotes.isPending}
+                disabled={requestQuotes.isSuccess}
+                onClick={() => requestQuotes.mutate({ moveId })}
+              >
+                Get moving quotes
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
+                isLoading={requestInternet.isPending}
+                disabled={requestInternet.isSuccess}
+                onClick={() => requestInternet.mutate({ moveId })}
+              >
+                Find internet options
+              </Button>
+            </div>
+            {requestQuotes.isSuccess || requestInternet.isSuccess ? (
               <p className="text-[12px] text-neutral-500">
-                Drafting your request — check the approval inbox in a moment.
+                Working on it — check the approval inbox in a moment.
               </p>
             ) : null}
           </div>

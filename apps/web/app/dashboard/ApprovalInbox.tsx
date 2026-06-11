@@ -9,6 +9,27 @@ import { trpc } from "@/lib/trpc/client";
 type PendingApproval =
   inferRouterOutputs<AppRouter>["approvals"]["listPending"][number];
 
+interface IspRecommendation {
+  offerId: string;
+  provider: string;
+  fitReason: string;
+  estimatedPriceLabel: string;
+}
+
+/** Internet approval items carry agent picks in outputData.recommendations. */
+function ispRecommendations(item: PendingApproval): IspRecommendation[] {
+  if (item.agentType !== "internet") return [];
+  const recs = (item.outputData as { recommendations?: unknown }).recommendations;
+  if (!Array.isArray(recs)) return [];
+  return recs.filter(
+    (r): r is IspRecommendation =>
+      typeof r === "object" &&
+      r !== null &&
+      typeof (r as IspRecommendation).offerId === "string" &&
+      typeof (r as IspRecommendation).provider === "string",
+  );
+}
+
 export function ApprovalInbox() {
   const pending = trpc.approvals.listPending.useQuery();
 
@@ -108,24 +129,62 @@ function ApprovalInboxItem({ item }: { item: PendingApproval }) {
         }
       : undefined;
 
+  const recs = ispRecommendations(item);
+
   return (
-    <ApprovalCard
-      title={item.title}
-      body={item.body}
-      agentType={item.agentType}
-      priority={item.priority}
-      emailDraft={emailDraft}
-      onApprove={busy ? undefined : () => approve.mutate({ approvalId: item.id })}
-      onEdit={
-        item.requiresEmailSend && !busy
-          ? () => {
-              setBody(item.emailBody ?? "");
-              setTo(item.emailTo ?? "");
-              setEditing(true);
-            }
-          : undefined
-      }
-      onReject={busy ? undefined : () => reject.mutate({ approvalId: item.id })}
-    />
+    <div className="flex flex-col gap-2">
+      <ApprovalCard
+        title={item.title}
+        body={item.body}
+        agentType={item.agentType}
+        priority={item.priority}
+        emailDraft={emailDraft}
+        onApprove={busy ? undefined : () => approve.mutate({ approvalId: item.id })}
+        onEdit={
+          item.requiresEmailSend && !busy
+            ? () => {
+                setBody(item.emailBody ?? "");
+                setTo(item.emailTo ?? "");
+                setEditing(true);
+              }
+            : undefined
+        }
+        onReject={busy ? undefined : () => reject.mutate({ approvalId: item.id })}
+      />
+      {recs.length > 0 ? (
+        <ul className="flex flex-col gap-2 rounded-lg bg-surface-sunken p-4 shadow-[var(--shadow-inset)]">
+          {recs.map((rec) => (
+            <li
+              key={rec.offerId}
+              className="flex flex-wrap items-center justify-between gap-2"
+            >
+              <div className="min-w-0">
+                <p className="text-[14px] font-semibold text-neutral-900">
+                  {rec.provider}
+                  <span className="ml-2 font-mono text-[11px] font-normal text-neutral-500">
+                    {rec.estimatedPriceLabel}
+                  </span>
+                </p>
+                <p className="text-[13px] leading-5 text-neutral-600">
+                  {rec.fitReason}
+                </p>
+              </div>
+              <a
+                href={`/api/affiliate/click?offer=${encodeURIComponent(rec.offerId)}&moveId=${item.moveId}&approval=${item.id}`}
+                target="_blank"
+                rel="noopener noreferrer sponsored"
+                className="shrink-0 rounded-md bg-brand-500 px-3 py-1.5 text-[13px] font-medium text-white shadow-e1 transition hover:bg-brand-600 active:translate-y-px active:shadow-e0"
+              >
+                Check availability
+              </a>
+            </li>
+          ))}
+          <li className="text-[11px] text-neutral-400">
+            MoverOS may earn a commission if you sign up — it never affects the
+            ranking above.
+          </li>
+        </ul>
+      ) : null}
+    </div>
   );
 }

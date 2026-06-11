@@ -37,18 +37,21 @@ on in production; the sign-up form already handles the "check your inbox" case.)
 
 ## 2. Apply the schema + RLS
 
-There are **three** SQL files and they must run **in this order**:
+There are **five** SQL files and they must run **in this order**:
 
 1. `packages/db/migrations/0000_small_crystal.sql` — tables, enums, indexes, FKs.
-2. `packages/db/supabase/0001_auth_fk_rls.sql` — the `auth.users` FK + Row-Level
+2. `packages/db/migrations/0001_long_norrin_radd.sql` — `affiliate_events`
+   (referral click tracking).
+3. `packages/db/supabase/0001_auth_fk_rls.sql` — the `auth.users` FK + Row-Level
    Security policies (requires the tables from step 1).
-3. `packages/db/supabase/0002_profile_trigger.sql` — auto-creates a
+4. `packages/db/supabase/0002_profile_trigger.sql` — auto-creates a
    `user_profiles` row on signup.
+5. `packages/db/supabase/0003_affiliate_rls.sql` — RLS for `affiliate_events`.
 
 ### Easiest path — Supabase SQL Editor (no local tooling)
 
 In the Supabase dashboard → **SQL Editor → New query**, then for each file in
-order: paste its full contents and click **Run**. Three pastes, done.
+order: paste its full contents and click **Run**. Five pastes, done.
 
 ### Alternative — drizzle-kit for step 1
 
@@ -153,7 +156,12 @@ What the code reads **today** vs. what each future feature will need.
 - **Nylas** — send/receive email on the user's behalf via an OAuth **grant**
   (`nylas_grant_id`). Free/sandbox tier. Needed only when you want **real** email
   send; the send is simulated without it. Vars: `NYLAS_API_KEY`,
-  `NYLAS_CLIENT_ID`, `NYLAS_CLIENT_SECRET`.
+  `NYLAS_CLIENT_ID`, `NYLAS_CLIENT_SECRET`. For **inbound replies** (the
+  reply-parse loop), also create a webhook in the Nylas dashboard pointing at
+  `https://<your-host>/api/nylas/webhook` subscribed to `message.created`, and
+  set `NYLAS_WEBHOOK_SECRET` to the webhook's signing secret — unsigned or
+  mis-signed posts are rejected. (Local dev: tunnel with `ngrok`/`cloudflared`;
+  without the webhook, replies simply never arrive — nothing else breaks.)
 
 ### ⚪ Later — only when you build that feature
 | Service | Account? | For | Notes |

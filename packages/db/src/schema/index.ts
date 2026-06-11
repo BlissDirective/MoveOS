@@ -7,3 +7,4 @@ export * from "./moves";
 export * from "./tasks";
 export * from "./agents";
 export * from "./approvals";
+export * from "./affiliate";

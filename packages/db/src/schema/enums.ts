@@ -85,3 +85,13 @@ export const approvalPriority = pgEnum("approval_priority", [
   "medium",
   "low",
 ]);
+
+// Referral-first monetization (review §7.3): unregulated categories only.
+// Mover-side referral fees are FMCSA-gated and deliberately NOT a category.
+export const affiliateCategory = pgEnum("affiliate_category", [
+  "isp",
+  "utility",
+  "insurance",
+  "storage",
+  "home_service",
+]);

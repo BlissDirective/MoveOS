@@ -14,6 +14,7 @@ export interface AppEvents {
     userId: string;
   }): Promise<void>;
   quotesRequested(data: { moveId: string; userId: string }): Promise<void>;
+  internetRequested(data: { moveId: string; userId: string }): Promise<void>;
 }
 
 const noopEvents: AppEvents = {
@@ -24,6 +25,9 @@ const noopEvents: AppEvents = {
     /* no-op */
   },
   async quotesRequested() {
+    /* no-op */
+  },
+  async internetRequested() {
     /* no-op */
   },
 };
