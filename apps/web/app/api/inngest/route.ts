@@ -6,6 +6,8 @@ import {
   dispatchApprovedAction,
   requestQuotes,
   recommendInternet,
+  planUtilities,
+  recommendServices,
 } from "@/lib/inngest/functions";
 
 // The Inngest endpoint. Inngest discovers and invokes registered functions here.
@@ -17,5 +19,7 @@ export const { GET, POST, PUT } = serve({
     dispatchApprovedAction,
     requestQuotes,
     recommendInternet,
+    planUtilities,
+    recommendServices,
   ],
 });

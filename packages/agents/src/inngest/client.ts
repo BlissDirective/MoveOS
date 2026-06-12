@@ -44,6 +44,18 @@ export type MoverOsEvents = {
       userId: string;
     };
   };
+  "utility/requested": {
+    data: {
+      moveId: string;
+      userId: string;
+    };
+  };
+  "service/requested": {
+    data: {
+      moveId: string;
+      userId: string;
+    };
+  };
   "email/reply.received": {
     data: {
       moveId: string;

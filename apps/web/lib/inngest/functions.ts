@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, gte, isNull, sql } from "drizzle-orm";
 import {
   getDb,
   agentTasks,
@@ -7,6 +7,7 @@ import {
   moves,
   tasks,
   userProfiles,
+  type AgentTask,
   type Database,
   type Move,
 } from "@moveros/db";
@@ -19,12 +20,18 @@ import {
   timelineAgent,
   quoteAgent,
   internetAgent,
+  utilityAgent,
+  serviceAgent,
   type ReplyParseInput,
   type TimelineInput,
   type TimelineTask,
   type QuoteInput,
   type InternetInput,
   type InternetRecommendation,
+  type UtilityInput,
+  type UtilityItem,
+  type ServiceInput,
+  type ServiceRecommendation,
 } from "@moveros/agents";
 
 /**
@@ -46,6 +53,74 @@ async function requireMoveOwned(
     .limit(1);
   if (!row) throw new Error(`move ${moveId} not owned by event user`);
   return row;
+}
+
+/**
+ * Per-move daily LLM budget (review §8 item 6): the harness *records* cost to
+ * agent_tasks; this is the gate that *checks* it before any model call. A hot
+ * loop or event storm fails fast (and leaves an audit row) instead of running
+ * up the Anthropic bill. Generous by default — a normal move lifecycle is
+ * ~$0.26; override with MOVE_LLM_DAILY_BUDGET_USD.
+ */
+const MOVE_LLM_DAILY_BUDGET_USD = Number(
+  process.env.MOVE_LLM_DAILY_BUDGET_USD ?? "5",
+);
+
+interface AgentTaskGate {
+  agentTaskId: string;
+  blocked: boolean;
+  spentTodayUsd: number;
+}
+
+/**
+ * Create the agent_tasks row for a run, refusing (status "failed", with the
+ * spend in errorMessage) when the move's recorded LLM cost today is already at
+ * budget. Callers must return early when `blocked` — never call the model.
+ */
+async function createAgentTaskGated(
+  db: Database,
+  args: {
+    moveId: string;
+    agentType: AgentTask["agentType"];
+    inputData?: Record<string, unknown>;
+  },
+): Promise<AgentTaskGate> {
+  const dayStart = new Date();
+  dayStart.setUTCHours(0, 0, 0, 0);
+  const [spendRow] = await db
+    .select({
+      total: sql<string | null>`sum(${agentTasks.estimatedCostUsd})`,
+    })
+    .from(agentTasks)
+    .where(
+      and(eq(agentTasks.moveId, args.moveId), gte(agentTasks.queuedAt, dayStart)),
+    );
+  const spentTodayUsd = Number(spendRow?.total ?? 0);
+  const blocked = spentTodayUsd >= MOVE_LLM_DAILY_BUDGET_USD;
+
+  const [row] = await db
+    .insert(agentTasks)
+    .values({
+      moveId: args.moveId,
+      agentType: args.agentType,
+      inputData: args.inputData ?? {},
+      ...(blocked
+        ? {
+            status: "failed" as const,
+            failedAt: new Date(),
+            errorMessage: `daily LLM budget reached for this move ($${spentTodayUsd.toFixed(2)} of $${MOVE_LLM_DAILY_BUDGET_USD} today) — run refused`,
+          }
+        : { status: "running" as const, startedAt: new Date() }),
+    })
+    .returning({ id: agentTasks.id });
+  if (!row) throw new Error("failed to create agent_tasks row");
+
+  if (blocked) {
+    console.warn(
+      `[budget] refused ${args.agentType} run for move ${args.moveId}: $${spentTodayUsd.toFixed(2)} spent today (budget $${MOVE_LLM_DAILY_BUDGET_USD})`,
+    );
+  }
+  return { agentTaskId: row.id, blocked, spentTodayUsd };
 }
 
 type TimelineOutcome = {
@@ -88,21 +163,18 @@ export const parseEmailReply = inngest.createFunction(
     const { moveId, userId, threadId, subject, from, body } = event.data;
     const db = getDb();
 
-    const agentTaskId = await step.run("create-agent-task", async () => {
+    const gate = await step.run("create-agent-task", async () => {
       await requireMoveOwned(db, moveId, userId);
-      const [row] = await db
-        .insert(agentTasks)
-        .values({
-          moveId,
-          agentType: "reply_parse",
-          status: "running",
-          startedAt: new Date(),
-          inputData: { threadId, from },
-        })
-        .returning({ id: agentTasks.id });
-      if (!row) throw new Error("failed to create agent_tasks row");
-      return row.id;
+      return createAgentTaskGated(db, {
+        moveId,
+        agentType: "reply_parse",
+        inputData: { threadId, from },
+      });
     });
+    if (gate.blocked) {
+      return { agentTaskId: gate.agentTaskId, ok: false, skipped: "llm-budget" };
+    }
+    const agentTaskId = gate.agentTaskId;
 
     const outcome = await step.run("run-reply-parse", async () => {
       const client = new Anthropic();
@@ -192,19 +264,13 @@ export const generateTimeline = inngest.createFunction(
       requireMoveOwned(db, moveId, userId),
     );
 
-    const agentTaskId = await step.run("create-agent-task", async () => {
-      const [row] = await db
-        .insert(agentTasks)
-        .values({
-          moveId,
-          agentType: "timeline",
-          status: "running",
-          startedAt: new Date(),
-        })
-        .returning({ id: agentTasks.id });
-      if (!row) throw new Error("failed to create agent_tasks row");
-      return row.id;
-    });
+    const gate = await step.run("create-agent-task", () =>
+      createAgentTaskGated(db, { moveId, agentType: "timeline" }),
+    );
+    if (gate.blocked) {
+      return { agentTaskId: gate.agentTaskId, ok: false, skipped: "llm-budget" };
+    }
+    const agentTaskId = gate.agentTaskId;
 
     const outcome = await step.run("run-timeline", async (): Promise<TimelineOutcome> => {
       const client = new Anthropic();
@@ -393,14 +459,13 @@ export const recommendInternet = inngest.createFunction(
       requireMoveOwned(db, moveId, userId),
     );
 
-    const agentTaskId = await step.run("create-agent-task", async () => {
-      const [row] = await db
-        .insert(agentTasks)
-        .values({ moveId, agentType: "internet", status: "running", startedAt: new Date() })
-        .returning({ id: agentTasks.id });
-      if (!row) throw new Error("failed to create agent_tasks row");
-      return row.id;
-    });
+    const gate = await step.run("create-agent-task", () =>
+      createAgentTaskGated(db, { moveId, agentType: "internet" }),
+    );
+    if (gate.blocked) {
+      return { agentTaskId: gate.agentTaskId, ok: false, skipped: "llm-budget" };
+    }
+    const agentTaskId = gate.agentTaskId;
 
     const outcome = await step.run("run-internet", async (): Promise<InternetOutcome> => {
       const client = new Anthropic();
@@ -531,14 +596,13 @@ export const requestQuotes = inngest.createFunction(
       requireMoveOwned(db, moveId, userId),
     );
 
-    const agentTaskId = await step.run("create-agent-task", async () => {
-      const [row] = await db
-        .insert(agentTasks)
-        .values({ moveId, agentType: "quote", status: "running", startedAt: new Date() })
-        .returning({ id: agentTasks.id });
-      if (!row) throw new Error("failed to create agent_tasks row");
-      return row.id;
-    });
+    const gate = await step.run("create-agent-task", () =>
+      createAgentTaskGated(db, { moveId, agentType: "quote" }),
+    );
+    if (gate.blocked) {
+      return { agentTaskId: gate.agentTaskId, ok: false, skipped: "llm-budget" };
+    }
+    const agentTaskId = gate.agentTaskId;
 
     const outcome = await step.run("run-quote", async (): Promise<QuoteOutcome> => {
       const client = new Anthropic();
@@ -608,6 +672,258 @@ export const requestQuotes = inngest.createFunction(
           status: "awaiting_approval",
           completedAt: new Date(),
           outputData: { summary: outcome.summary },
+          llmModel: outcome.model,
+          inputTokens: outcome.inputTokens,
+          outputTokens: outcome.outputTokens,
+          estimatedCostUsd: outcome.costUsd.toFixed(6),
+        })
+        .where(eq(agentTasks.id, agentTaskId));
+    });
+
+    return { agentTaskId, ok: outcome.ok };
+  },
+);
+
+type UtilityOutcome = {
+  ok: boolean;
+  summary: string;
+  items: UtilityItem[];
+  model: string;
+  inputTokens: number;
+  outputTokens: number;
+  costUsd: number;
+  error: string | null;
+};
+
+/**
+ * plan-utilities — builds the stop/start utility plan (origin shutoffs +
+ * destination setups) and drops it into the approval inbox. No affiliate
+ * links and no provider names — utilities are regional monopolies, so the
+ * agent describes each step generically and the user fills in the local
+ * company.
+ */
+export const planUtilities = inngest.createFunction(
+  { id: "plan-utilities", retries: 2 },
+  { event: "utility/requested" },
+  async ({ event, step }) => {
+    const { moveId, userId } = event.data;
+    const db = getDb();
+
+    const move = await step.run("load-move", () =>
+      requireMoveOwned(db, moveId, userId),
+    );
+
+    const gate = await step.run("create-agent-task", () =>
+      createAgentTaskGated(db, { moveId, agentType: "utility" }),
+    );
+    if (gate.blocked) {
+      return { agentTaskId: gate.agentTaskId, ok: false, skipped: "llm-budget" };
+    }
+    const agentTaskId = gate.agentTaskId;
+
+    const outcome = await step.run("run-utility", async (): Promise<UtilityOutcome> => {
+      const client = new Anthropic();
+      const input: UtilityInput = {
+        originCity: move.originCity ?? "",
+        originState: move.originState ?? "",
+        destinationCity: move.destinationCity ?? "",
+        destinationState: move.destinationState ?? "",
+        moveDate: move.moveDate,
+        homeSize: move.homeSize,
+      };
+      const result = await runAgent(utilityAgent, input, { client });
+      return result.ok
+        ? {
+            ok: true,
+            summary: result.output.summary,
+            items: result.output.items,
+            model: utilityAgent.model,
+            inputTokens: result.usage.inputTokens,
+            outputTokens: result.usage.outputTokens,
+            costUsd: result.costUsd,
+            error: null,
+          }
+        : {
+            ok: false,
+            summary: "",
+            items: [],
+            model: utilityAgent.model,
+            inputTokens: 0,
+            outputTokens: 0,
+            costUsd: 0,
+            error: result.error,
+          };
+    });
+
+    await step.run("persist", async () => {
+      if (!outcome.ok) {
+        await db
+          .update(agentTasks)
+          .set({ status: "failed", failedAt: new Date(), errorMessage: outcome.error })
+          .where(eq(agentTasks.id, agentTaskId));
+        return;
+      }
+
+      await db.insert(approvalItems).values({
+        moveId,
+        agentTaskId,
+        agentType: "utility",
+        status: "awaiting_approval",
+        priority: "medium",
+        title: "Your utility stop/start plan",
+        body: outcome.summary,
+        outputData: { items: outcome.items },
+      });
+
+      await db
+        .update(agentTasks)
+        .set({
+          status: "awaiting_approval",
+          completedAt: new Date(),
+          outputData: { items: outcome.items },
+          llmModel: outcome.model,
+          inputTokens: outcome.inputTokens,
+          outputTokens: outcome.outputTokens,
+          estimatedCostUsd: outcome.costUsd.toFixed(6),
+        })
+        .where(eq(agentTasks.id, agentTaskId));
+    });
+
+    return { agentTaskId, ok: outcome.ok };
+  },
+);
+
+type ServiceOutcome = {
+  ok: boolean;
+  summary: string;
+  recommendations: ServiceRecommendation[];
+  model: string;
+  inputTokens: number;
+  outputTokens: number;
+  costUsd: number;
+  error: string | null;
+};
+
+/**
+ * recommend-services — picks the ancillary services (insurance / storage /
+ * home services) that fit this move from the offers catalog. Same
+ * referral-bearing pattern as recommend-internet: catalog candidates in, a
+ * no-fabrication gate on the way out, affiliate links only in the approval
+ * inbox where the user decides.
+ */
+export const recommendServices = inngest.createFunction(
+  { id: "recommend-services", retries: 2 },
+  { event: "service/requested" },
+  async ({ event, step }) => {
+    const { moveId, userId } = event.data;
+    const db = getDb();
+
+    const move = await step.run("load-move", () =>
+      requireMoveOwned(db, moveId, userId),
+    );
+
+    const gate = await step.run("create-agent-task", () =>
+      createAgentTaskGated(db, { moveId, agentType: "service" }),
+    );
+    if (gate.blocked) {
+      return { agentTaskId: gate.agentTaskId, ok: false, skipped: "llm-budget" };
+    }
+    const agentTaskId = gate.agentTaskId;
+
+    const outcome = await step.run("run-service", async (): Promise<ServiceOutcome> => {
+      const client = new Anthropic();
+      const candidates = (["insurance", "storage", "home_service"] as const)
+        .flatMap((category) => offersByCategory(category))
+        .filter((o) => o.service)
+        .map((o) => ({
+          offerId: o.id,
+          provider: o.provider,
+          category: o.category as "insurance" | "storage" | "home_service",
+          typicalCostLabel: o.service!.typicalCostLabel,
+          notes: o.service!.notes,
+        }));
+      const input: ServiceInput = {
+        moveType: move.moveType ?? null,
+        moveDate: move.moveDate,
+        homeSize: move.homeSize,
+        specialItems: move.specialItems ?? [],
+        candidates,
+      };
+      const result = await runAgent(serviceAgent, input, { client });
+      if (!result.ok) {
+        return {
+          ok: false,
+          summary: "",
+          recommendations: [],
+          model: serviceAgent.model,
+          inputTokens: 0,
+          outputTokens: 0,
+          costUsd: 0,
+          error: result.error,
+        };
+      }
+      // No-fabrication gate: only catalog offers in referral categories survive.
+      const recommendations = result.output.recommendations.filter((r) => {
+        const offer = AFFILIATE_OFFERS[r.offerId];
+        return (
+          offer !== undefined &&
+          (offer.category === "insurance" ||
+            offer.category === "storage" ||
+            offer.category === "home_service")
+        );
+      });
+      return recommendations.length > 0
+        ? {
+            ok: true,
+            summary: result.output.summary,
+            recommendations,
+            model: serviceAgent.model,
+            inputTokens: result.usage.inputTokens,
+            outputTokens: result.usage.outputTokens,
+            costUsd: result.costUsd,
+            error: null,
+          }
+        : {
+            ok: false,
+            summary: "",
+            recommendations: [],
+            model: serviceAgent.model,
+            inputTokens: result.usage.inputTokens,
+            outputTokens: result.usage.outputTokens,
+            costUsd: result.costUsd,
+            error: "all recommendations referenced unknown offers",
+          };
+    });
+
+    await step.run("persist", async () => {
+      if (!outcome.ok) {
+        await db
+          .update(agentTasks)
+          .set({ status: "failed", failedAt: new Date(), errorMessage: outcome.error })
+          .where(eq(agentTasks.id, agentTaskId));
+        return;
+      }
+
+      const topPick = outcome.recommendations[0]!;
+      await db.insert(approvalItems).values({
+        moveId,
+        agentTaskId,
+        agentType: "service",
+        status: "awaiting_approval",
+        priority: "low",
+        title: "Services worth lining up for this move",
+        body: outcome.summary,
+        outputData: { recommendations: outcome.recommendations },
+        affiliateType: AFFILIATE_OFFERS[topPick.offerId]?.category ?? null,
+        affiliatePickId: topPick.offerId,
+      });
+
+      await db
+        .update(agentTasks)
+        .set({
+          status: "awaiting_approval",
+          completedAt: new Date(),
+          outputData: { recommendations: outcome.recommendations },
           llmModel: outcome.model,
           inputTokens: outcome.inputTokens,
           outputTokens: outcome.outputTokens,

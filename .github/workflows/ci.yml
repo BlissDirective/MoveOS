@@ -26,6 +26,29 @@ jobs:
 
       - run: pnpm typecheck
 
+  # Agent eval gate (spec §6.5). Offline def checks always run (golden inputs
+  # vs schemas, models vs pricing table); live golden cases run only when the
+  # ANTHROPIC_API_KEY secret is configured (costs a few cents per run).
+  agent-evals:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm --filter @moveros/agents eval
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
   # Return gate for Kimi K2.6 build output (see docs/kimi-handoff.md). Validates
   # any handoff files by convention (handoff/**/*.txt or **/*.kimi.txt) and skips
   # cleanly when there are none, so it activates the moment Kimi output lands.

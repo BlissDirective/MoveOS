@@ -21,6 +21,17 @@ export function MoveTimeline({ moveId }: { moveId: string }) {
   const requestInternet = trpc.moves.requestInternet.useMutation({
     onSuccess: () => utils.approvals.listPending.invalidate(),
   });
+  const requestUtilities = trpc.moves.requestUtilities.useMutation({
+    onSuccess: () => utils.approvals.listPending.invalidate(),
+  });
+  const requestServices = trpc.moves.requestServices.useMutation({
+    onSuccess: () => utils.approvals.listPending.invalidate(),
+  });
+  const anyAgentKicked =
+    requestQuotes.isSuccess ||
+    requestInternet.isSuccess ||
+    requestUtilities.isSuccess ||
+    requestServices.isSuccess;
 
   if (move.error) {
     return <p className="text-[15px] text-error">{move.error.message}</p>;
@@ -60,8 +71,26 @@ export function MoveTimeline({ moveId }: { moveId: string }) {
               >
                 Find internet options
               </Button>
+              <Button
+                size="sm"
+                variant="secondary"
+                isLoading={requestUtilities.isPending}
+                disabled={requestUtilities.isSuccess}
+                onClick={() => requestUtilities.mutate({ moveId })}
+              >
+                Plan utilities
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
+                isLoading={requestServices.isPending}
+                disabled={requestServices.isSuccess}
+                onClick={() => requestServices.mutate({ moveId })}
+              >
+                Suggest services
+              </Button>
             </div>
-            {requestQuotes.isSuccess || requestInternet.isSuccess ? (
+            {anyAgentKicked ? (
               <p className="text-[12px] text-neutral-500">
                 Working on it — check the approval inbox in a moment.
               </p>

@@ -9,24 +9,49 @@ import { trpc } from "@/lib/trpc/client";
 type PendingApproval =
   inferRouterOutputs<AppRouter>["approvals"]["listPending"][number];
 
-interface IspRecommendation {
+interface OfferRecommendation {
   offerId: string;
   provider: string;
   fitReason: string;
   estimatedPriceLabel: string;
 }
 
-/** Internet approval items carry agent picks in outputData.recommendations. */
-function ispRecommendations(item: PendingApproval): IspRecommendation[] {
-  if (item.agentType !== "internet") return [];
+/**
+ * Referral-bearing approval items (internet, service) carry agent picks in
+ * outputData.recommendations — same shape for both, rendered identically.
+ */
+interface UtilityPlanItem {
+  utilityType: string;
+  where: string;
+  title: string;
+  action: string;
+  dueDaysBefore: number;
+}
+
+/** Utility approval items carry the stop/start plan in outputData.items. */
+function utilityPlanItems(item: PendingApproval): UtilityPlanItem[] {
+  if (item.agentType !== "utility") return [];
+  const items = (item.outputData as { items?: unknown }).items;
+  if (!Array.isArray(items)) return [];
+  return items.filter(
+    (i): i is UtilityPlanItem =>
+      typeof i === "object" &&
+      i !== null &&
+      typeof (i as UtilityPlanItem).title === "string" &&
+      typeof (i as UtilityPlanItem).action === "string",
+  );
+}
+
+function offerRecommendations(item: PendingApproval): OfferRecommendation[] {
+  if (item.agentType !== "internet" && item.agentType !== "service") return [];
   const recs = (item.outputData as { recommendations?: unknown }).recommendations;
   if (!Array.isArray(recs)) return [];
   return recs.filter(
-    (r): r is IspRecommendation =>
+    (r): r is OfferRecommendation =>
       typeof r === "object" &&
       r !== null &&
-      typeof (r as IspRecommendation).offerId === "string" &&
-      typeof (r as IspRecommendation).provider === "string",
+      typeof (r as OfferRecommendation).offerId === "string" &&
+      typeof (r as OfferRecommendation).provider === "string",
   );
 }
 
@@ -129,7 +154,8 @@ function ApprovalInboxItem({ item }: { item: PendingApproval }) {
         }
       : undefined;
 
-  const recs = ispRecommendations(item);
+  const recs = offerRecommendations(item);
+  const utilityItems = utilityPlanItems(item);
 
   return (
     <div className="flex flex-col gap-2">
@@ -175,7 +201,7 @@ function ApprovalInboxItem({ item }: { item: PendingApproval }) {
                 rel="noopener noreferrer sponsored"
                 className="shrink-0 rounded-md bg-brand-500 px-3 py-1.5 text-[13px] font-medium text-white shadow-e1 transition hover:bg-brand-600 active:translate-y-px active:shadow-e0"
               >
-                Check availability
+                {item.agentType === "internet" ? "Check availability" : "View offer"}
               </a>
             </li>
           ))}
@@ -183,6 +209,23 @@ function ApprovalInboxItem({ item }: { item: PendingApproval }) {
             MoverOS may earn a commission if you sign up — it never affects the
             ranking above.
           </li>
+        </ul>
+      ) : null}
+      {utilityItems.length > 0 ? (
+        <ul className="flex flex-col gap-2 rounded-lg bg-surface-sunken p-4 shadow-[var(--shadow-inset)]">
+          {utilityItems.map((u, i) => (
+            <li key={`${u.utilityType}-${u.where}-${i}`}>
+              <p className="text-[14px] font-semibold text-neutral-900">
+                {u.title}
+                <span className="ml-2 font-mono text-[11px] font-normal text-neutral-500">
+                  {u.dueDaysBefore === 0
+                    ? "moving day"
+                    : `T-${u.dueDaysBefore}d`}
+                </span>
+              </p>
+              <p className="text-[13px] leading-5 text-neutral-600">{u.action}</p>
+            </li>
+          ))}
         </ul>
       ) : null}
     </div>

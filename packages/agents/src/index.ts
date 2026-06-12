@@ -41,3 +41,23 @@ export type {
   InternetRecommendation,
   IspCandidate,
 } from "./defs/internet";
+export {
+  utilityAgent,
+  utilityInput,
+  utilityOutput,
+  utilityItem,
+} from "./defs/utility";
+export type { UtilityInput, UtilityOutput, UtilityItem } from "./defs/utility";
+export {
+  serviceAgent,
+  serviceInput,
+  serviceOutput,
+  serviceRecommendation,
+  serviceCandidate,
+} from "./defs/service";
+export type {
+  ServiceInput,
+  ServiceOutput,
+  ServiceRecommendation,
+  ServiceCandidate,
+} from "./defs/service";

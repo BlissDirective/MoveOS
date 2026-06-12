@@ -34,6 +34,12 @@ export interface AffiliateOffer {
     typicalMonthlyUsd: number;
     notes: string;
   };
+  /** Insurance/storage/home-service metadata the ServiceAgent uses. */
+  service?: {
+    /** Always phrased as an estimate — shown to the agent and the user. */
+    typicalCostLabel: string;
+    notes: string;
+  };
 }
 
 export const AFFILIATE_OFFERS: Record<string, AffiliateOffer> = {
@@ -114,6 +120,11 @@ export const AFFILIATE_OFFERS: Record<string, AffiliateOffer> = {
     network: "direct",
     linkTemplate: "https://www.lemonade.com/renters?ref={subId}",
     payoutEstimateUsd: 30,
+    service: {
+      typicalCostLabel: "est. ~$15-25/mo",
+      notes:
+        "Renter's insurance — most landlords require an active policy at move-in; instant online signup.",
+    },
   },
   storage_extra_space: {
     id: "storage_extra_space",
@@ -122,6 +133,11 @@ export const AFFILIATE_OFFERS: Record<string, AffiliateOffer> = {
     network: "cj",
     linkTemplate: "https://www.extraspace.com/?sid={subId}",
     payoutEstimateUsd: 30,
+    service: {
+      typicalCostLabel: "est. ~$80-200/mo",
+      notes:
+        "Month-to-month storage units — useful for lease gaps, downsizing, or staged moves.",
+    },
   },
 };
 

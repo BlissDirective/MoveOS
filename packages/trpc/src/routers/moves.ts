@@ -66,6 +66,30 @@ export const movesRouter = router({
       return { ok: true };
     }),
 
+  /** Kick the utility agent to plan stop/start utility transitions. */
+  requestUtilities: protectedProcedure
+    .input(moveId)
+    .mutation(async ({ ctx, input }) => {
+      await ctx.scoped.requireMove(input.moveId); // ownership check
+      await ctx.events.utilitiesRequested({
+        moveId: input.moveId,
+        userId: ctx.userId,
+      });
+      return { ok: true };
+    }),
+
+  /** Kick the service agent to pick relevant ancillary services. */
+  requestServices: protectedProcedure
+    .input(moveId)
+    .mutation(async ({ ctx, input }) => {
+      await ctx.scoped.requireMove(input.moveId); // ownership check
+      await ctx.events.servicesRequested({
+        moveId: input.moveId,
+        userId: ctx.userId,
+      });
+      return { ok: true };
+    }),
+
   tasks: protectedProcedure
     .input(moveId)
     .query(({ ctx, input }) => ctx.scoped.tasks.listForMove(input.moveId)),

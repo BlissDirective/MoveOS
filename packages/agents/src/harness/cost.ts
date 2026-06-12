@@ -17,10 +17,16 @@ export const MODEL_PRICING: Record<string, ModelPricing> = {
   "claude-haiku-4-5": { inputPerMTok: 1, outputPerMTok: 5 },
 };
 
-/** Estimated USD cost of a run. Returns 0 for unknown models (logged elsewhere). */
+/** Estimated USD cost of a run. Unknown models log loudly and return 0 — a
+ * silent 0 would corrupt the ledger the per-move budget guard reads. */
 export function estimateCostUsd(model: string, usage: TokenUsage): number {
   const p = MODEL_PRICING[model];
-  if (!p) return 0;
+  if (!p) {
+    console.error(
+      `[cost] model "${model}" missing from MODEL_PRICING — recording $0; fix the pricing table`,
+    );
+    return 0;
+  }
   return (
     (usage.inputTokens / 1_000_000) * p.inputPerMTok +
     (usage.outputTokens / 1_000_000) * p.outputPerMTok
